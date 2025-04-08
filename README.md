@@ -13,3 +13,7 @@ cd backend && mvn spring-boot:run
 
 # Frontend
 cd frontend && npm start
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
