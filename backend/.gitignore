@@ -81,3 +81,13 @@ Thumbs.db
 
 ### Documentation ###
 .docusaurus/
+
+# Angular specific (si usas standalone components y SSR)
+.angular/cache/
+.angular/ssr/
+
+# Git
+*.orig
+
+# Backend extras
+.spring-boot-devtools.restart.*
