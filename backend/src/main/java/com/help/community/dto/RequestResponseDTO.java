@@ -13,7 +13,17 @@ public class RequestResponseDTO {
     private String category;
     private String status;
     private LocalDateTime createdAt;
+
+    /**
+     * Usuario creador de la solicitud.
+     * Se expone el nombre y el rol.
+     */
     private UserDTO creator;
+
+    /**
+     * Voluntario asignado.
+     * Se expone el nombre y el rol.
+     */
     private UserDTO volunteer;
 
 }

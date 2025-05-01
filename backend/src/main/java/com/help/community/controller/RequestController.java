@@ -8,6 +8,7 @@ import com.help.community.repository.RequestRepository;
 import com.help.community.repository.UserRepository;
 import com.help.community.service.RequestService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,8 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Controlador para manejar las operaciones relacionadas con solicitudes de ayuda.
@@ -31,11 +30,7 @@ public class RequestController {
     private final UserRepository userRepository;
     private final RequestService requestService;
 
-    public RequestController(
-            RequestRepository requestRepository,
-            UserRepository userRepository,
-            RequestService requestService
-    ) {
+    public RequestController(RequestRepository requestRepository, UserRepository userRepository, RequestService requestService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;

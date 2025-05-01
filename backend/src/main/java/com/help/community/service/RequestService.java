@@ -58,7 +58,6 @@ public class RequestService {
         UserDTO creatorDTO = new UserDTO();
         creatorDTO.setId(request.getCreator().getId());
         creatorDTO.setName(request.getCreator().getName());
-        creatorDTO.setEmail(request.getCreator().getEmail());
         creatorDTO.setRole(request.getCreator().getMainRole());
         dto.setCreator(creatorDTO);
 

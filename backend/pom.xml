@@ -12,7 +12,7 @@
 
 	<groupId>com.help</groupId>
 	<artifactId>backend</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<name>CommunityHelp</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>

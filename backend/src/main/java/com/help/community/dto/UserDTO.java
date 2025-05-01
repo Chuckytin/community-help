@@ -1,5 +1,6 @@
 package com.help.community.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 /**
@@ -11,7 +12,13 @@ public class UserDTO {
 
     private Long id;
     private String name;
-    private String email;
     private String role;
+
+    @JsonIgnore
+    private String email;
+
+    @JsonIgnore
+    private String password;
+
 
 }
