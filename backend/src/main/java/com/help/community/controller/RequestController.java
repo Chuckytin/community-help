@@ -6,6 +6,7 @@ import com.help.community.model.Request;
 import com.help.community.model.User;
 import com.help.community.repository.RequestRepository;
 import com.help.community.repository.UserRepository;
+import com.help.community.security.services.UserDetailsImpl;
 import com.help.community.service.RequestService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -43,9 +47,11 @@ public class RequestController {
 
     /**
      * Obtiene todas las solicitudes en formato DTO.
-     * Convierte cada Request a RequestResponseDTO
+     * Convierte cada Request a RequestResponseDTO.
+     * Solo usuarios registrados.
      */
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public Page<RequestResponseDTO> getAllRequests(
             @PageableDefault(size = 25, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
@@ -54,13 +60,20 @@ public class RequestController {
 
     /**
      * Crea una nueva solicitud y devuelve el DTO de la solicitud creada.
-     * @param requestDTO Datos validados de la solicitud.
-     * @return ResponseEntity con el DTO de la solicitud y HTTP 201.
+     * Solo para usuarios autenticados.
+     * - Obtiene el usuario autenticado del contexto de seguridad.
+     * - Busca el usuario completo en la base de datos.
+     *
      */
     @PostMapping
+    @PreAuthorize("hasRole('USER')")
     public ResponseEntity<RequestResponseDTO> createRequest(@Valid @RequestBody CreateRequestDTO requestDTO) {
-        // TODO: Reemplazar con el usuario autenticado (tras implementar JWT)
-        User creator = userRepository.findById(1L).orElseThrow();
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+
+        User creator = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         Request request = new Request();
         request.setTitle(requestDTO.getTitle());
@@ -70,7 +83,6 @@ public class RequestController {
 
         Request savedRequest = requestRepository.save(request);
 
-        // Convertir la entidad guardada a DTO antes de devolverla
         RequestResponseDTO responseDTO = requestService.toDTO(savedRequest);
 
         return ResponseEntity

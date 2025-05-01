@@ -61,6 +61,7 @@ coverage/
 lib-cov/
 
 # Environment
+.env
 .env*
 !.env.example
 

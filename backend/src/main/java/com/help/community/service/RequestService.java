@@ -8,6 +8,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Clase Service para transformar las entidades DTOs, centraliza la lógica de mapeo.
  * Convierte una entidad Request a su DTO y mapea el creator al UserDTO.
@@ -19,6 +22,17 @@ public class RequestService {
 
     public RequestService(RequestRepository requestRepository) {
         this.requestRepository = requestRepository;
+    }
+
+    /**
+     * Obtiene todas las solicitudes SIN paginación (para compatibilidad con endpoints existentes).
+     * @deprecated Usar mejor getAllRequests(Pageable pageable) para nuevos desarrollos.
+     */
+    public List<RequestResponseDTO> getAllRequests() {
+        return requestRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -45,7 +59,7 @@ public class RequestService {
         creatorDTO.setId(request.getCreator().getId());
         creatorDTO.setName(request.getCreator().getName());
         creatorDTO.setEmail(request.getCreator().getEmail());
-        creatorDTO.setRole(request.getCreator().getRole());
+        creatorDTO.setRole(request.getCreator().getMainRole());
         dto.setCreator(creatorDTO);
 
         return dto;
