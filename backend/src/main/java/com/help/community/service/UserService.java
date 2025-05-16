@@ -21,7 +21,7 @@ public class UserService {
         return userRepository.findAll(pageable)
                 .map(user -> {
                     UserDTO dto = new UserDTO();
-                    dto.setId(user.getId());
+                    dto.setId(user.getUser_id());
                     dto.setName(user.getName());
                     dto.setRole(user.getMainRole());
                     return dto;

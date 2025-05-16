@@ -69,7 +69,7 @@ public class RequestController {
         RequestResponseDTO responseDTO = requestService.toDTO(savedRequest);
 
         return ResponseEntity
-                .created(URI.create("/api/requests/" + savedRequest.getId()))
+                .created(URI.create("/api/requests/" + savedRequest.getRequest_id()))
                 .body(responseDTO);
     }
 

@@ -48,7 +48,7 @@ public class RequestService {
      */
     public RequestResponseDTO toDTO(Request request) {
         RequestResponseDTO dto = new RequestResponseDTO();
-        dto.setId(request.getId());
+        dto.setId(request.getRequest_id());
         dto.setTitle(request.getTitle());
         dto.setDescription(request.getDescription());
         dto.setCategory(request.getCategory());
@@ -56,7 +56,7 @@ public class RequestService {
         dto.setCreatedAt(request.getCreatedAt());
 
         UserDTO creatorDTO = new UserDTO();
-        creatorDTO.setId(request.getCreator().getId());
+        creatorDTO.setId(request.getCreator().getUser_id());
         creatorDTO.setName(request.getCreator().getName());
         creatorDTO.setRole(request.getCreator().getMainRole());
         dto.setCreator(creatorDTO);
