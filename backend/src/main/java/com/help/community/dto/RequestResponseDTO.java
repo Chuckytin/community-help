@@ -1,10 +1,16 @@
 package com.help.community.dto;
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO de respuesta para una solicitud de ayuda.
+ * Incluye información básica y usuarios involucrados (creador y voluntario).
+ */
 @Data
+@Builder
 public class RequestResponseDTO {
 
     private Long id;

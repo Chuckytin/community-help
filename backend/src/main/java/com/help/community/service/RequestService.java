@@ -47,19 +47,26 @@ public class RequestService {
      * Convierte una entidad Request a su DTO correspondiente.
      */
     public RequestResponseDTO toDTO(Request request) {
-        RequestResponseDTO dto = new RequestResponseDTO();
-        dto.setId(request.getRequest_id());
-        dto.setTitle(request.getTitle());
-        dto.setDescription(request.getDescription());
-        dto.setCategory(request.getCategory());
-        dto.setStatus(request.getStatus());
-        dto.setCreatedAt(request.getCreatedAt());
 
-        UserDTO creatorDTO = new UserDTO();
-        creatorDTO.setId(request.getCreator().getUser_id());
-        creatorDTO.setName(request.getCreator().getName());
-        creatorDTO.setRole(request.getCreator().getMainRole());
-        dto.setCreator(creatorDTO);
+        RequestResponseDTO dto = RequestResponseDTO.builder()
+                .id(request.getRequest_id())
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .category(request.getCategory())
+                .status(request.getStatus())
+                .createdAt(request.getCreatedAt())
+                .creator(UserDTO.builder()
+                        .id(request.getCreator().getUser_id())
+                        .name(request.getCreator().getName())
+                        .role(request.getCreator().getMainRole())
+                        .build())
+                .build();
+
+        UserDTO creatorDTO = UserDTO.builder()
+                .id(request.getCreator().getUser_id())
+                .name(request.getCreator().getName())
+                .role(request.getCreator().getMainRole())
+                .build();
 
         return dto;
     }

@@ -3,6 +3,7 @@ package com.help.community.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -10,16 +11,17 @@ import lombok.Data;
  * Valida los datos antes de convertirlos en una entidad Request.
  */
 @Data
+@Builder
 public class CreateRequestDTO {
 
-    @NotBlank(message = "El título no puede estar vacío.")
-    @Size(max = 100, message = "El título no puede exceder los 100 carácteres.")
+    @NotBlank(message = "Title cannot be empty")
+    @Size(max = 100, message = "Title cannot exceed 100 characters")
     private String title;
 
-    @NotBlank(message = "La descripción no puede estar vacía.")
+    @NotBlank(message = "Description cannot be empty")
     private String description;
 
-    @NotBlank(message = "La categoría no puede estar vacía.")
+    @NotBlank(message = "Category cannot be empty")
     private String category;
 
 }

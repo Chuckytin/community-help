@@ -1,6 +1,7 @@
 package com.help.community.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Builder;
 import lombok.Data;
 
 /**
@@ -8,6 +9,7 @@ import lombok.Data;
  * Oculta campos sensibles como 'password'.
  */
 @Data
+@Builder
 public class UserDTO {
 
     private Long id;

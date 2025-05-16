@@ -1,20 +1,30 @@
 package com.help.community.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Representa a un usuario en el sistema.
  * Esta entidad se mapea a la tabla "users" en la BBDD y almacena información de autenticación y perfil del usuario.
  */
 @Data
+@Builder
+@AllArgsConstructor
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,10 +39,12 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Enumerated(EnumType.STRING)
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    private Set<Role> roles = new HashSet<>();
+    @Column(name = "role")
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>(Set.of(Role.ROLE_USER));
 
     public enum Role {
         ROLE_USER,
@@ -43,32 +55,55 @@ public class User {
     @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL)
     private List<Request> createdRequests;
 
-    /**
-     * Rol por defecto de Usuario
-     */
-    private void initDefaultRoles() {
-        this.roles.add(Role.ROLE_USER);
-    }
-
-    public User() {
-        initDefaultRoles();
-    }
+    public User() { }
 
     public User(String email, String name, String password) {
+        this();
         this.email = email;
         this.name = name;
         this.password = password;
-        initDefaultRoles();
     }
 
     /**
-     * Para obtener el primer rol
+     * Obtiene el rol principal del usuario.
      */
     public String getMainRole() {
         return this.roles.stream()
                 .findFirst()
                 .map(Enum::name)
                 .orElse(Role.ROLE_USER.name());
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return this.roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.name()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 
 }
