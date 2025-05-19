@@ -6,9 +6,9 @@ import lombok.Data;
 
 /**
  * Respuesta de autenticación que contiene:
- * - Token JWT para autorización
- * - Tipo de token (siempre Bearer)
- * - Datos básicos del usuario autenticado
+ * - El token JWT generado
+ * - El tipo de token (por defecto "Bearer")
+ * - Los datos del usuario autenticado
  */
 @Data
 @Builder
@@ -19,10 +19,11 @@ public class JwtResponse {
     private UserDTO user;
 
     /**
+     * Crea una instancia de JwtResponse a partir del token y datos del usuario.
      *
-     * @param token
-     * @param user
-     * @return
+     * @param token Token JWT
+     * @param user Datos del usuario autenticado
+     * @return JwtResponse con token y datos del usuario
      */
     public static JwtResponse of(String token, UserDTO user) {
         return JwtResponse.builder()

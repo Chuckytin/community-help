@@ -1,22 +1,22 @@
 package com.help.community.security.auth;
 
+import io.jsonwebtoken.JwtException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
- * Controlador para operaciones de autenticación.
- * Expone endpoints públicos para registro y login de usuarios.
+ * Controlador REST para operaciones de autenticación de usuarios.
+ * Proporciona endpoints públicos para registro, login y renovación de tokens.
  */
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Autentication", description = "User registration and login API")
+@Tag(name = "Autentication", description = "User authentication API")
 public class AuthController {
 
     private final AuthService authService;
@@ -26,17 +26,15 @@ public class AuthController {
     }
 
     /**
-     * Registra un nuevo usuario en el sistema.
+     * Registra un nuevo usuario y devuelve un token JWT.
      *
      * @param registerRequest DTO con datos de registro (email, nombre, password)
-     * @return usuario creado
+     * @return Token JWT junto con los datos del usuario
      */
     @PostMapping("/register")
-    @Operation(summary = "User registration")
+    @Operation(summary = "Register new user")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
-
         return ResponseEntity.ok(authService.register(registerRequest));
-
     }
 
     /**
@@ -46,11 +44,32 @@ public class AuthController {
      * @return token JWT
      */
     @PostMapping("/login")
-    @Operation(summary = "User login")
+    @Operation(summary = "Authenticate user")
     public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-
         return ResponseEntity.ok(authService.login(loginRequest));
+    }
 
+    /**
+     * Renueva un token JWT si es válido y no ha expirado completamente.
+     *
+     * @param authHeader Encabezado Authorization con el token actual
+     * @return Nuevo token JWT o error si no es válido
+     */
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            String token = authHeader.substring(7);
+            return ResponseEntity.ok(authService.refreshToken(token));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
 }

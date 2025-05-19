@@ -5,6 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * DTO para solicitudes de login.
+ * Contiene las credenciales necesarias para autenticar a un usuario.
+ */
 @Data
 public class LoginRequest {
 

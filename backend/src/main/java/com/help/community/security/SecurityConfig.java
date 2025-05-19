@@ -14,22 +14,20 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Configuración principal de seguridad.
- * - Habilita protección CSRF.
- * - Establece política de sesiones sin estado (STATELESS).
- *      CSRF: Cada petición debe incluir un token especial para ser válida.
- *      STATELESS: Cada petición es independiente y contiene todos los datos necesarios.
- * - Define reglas de autorización para endpoints.
+ * Configuración principal de seguridad Spring Security.
+ * Define filtros, políticas de sesión, codificadores de contraseña y autenticación.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     /**
-     * Define la cadena de filtros de seguridad para las solicitudes HTTP.
-     * (CSRF deshabilitado durante las pruebas)
-     * @param http Configura las reglas de seguridad HttpSecurity
-     * @return
+     * Configura la cadena de filtros de seguridad, define rutas públicas
+     * y deshabilita CSRF para pruebas.
+     *
+     * @param http configuración HTTP
+     * @param jwtAuthFilter filtro personalizado de autenticación JWT
+     * @return Cadena de filtros de seguridad
      * @throws Exception
      */
     @Bean
@@ -50,11 +48,17 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Provee el AuthenticationManager para autenticaciones personalizadas.
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Provee el codificador de contraseñas (BCrypt).
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

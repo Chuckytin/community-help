@@ -55,6 +55,9 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL)
     private List<Request> createdRequests;
 
+    @OneToMany(mappedBy = "volunteer")
+    private List<Request> volunteeredRequests;
+
     public User() { }
 
     public User(String email, String name, String password) {

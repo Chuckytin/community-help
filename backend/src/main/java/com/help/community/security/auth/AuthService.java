@@ -1,5 +1,6 @@
 package com.help.community.security.auth;
 
+import com.help.community.dto.AuthResponse;
 import com.help.community.dto.UserDTO;
 import com.help.community.exception.EmailAlreadyExistsException;
 import com.help.community.model.User;
@@ -11,6 +12,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+/**
+ * Servicio que gestiona la autenticación y registro de usuarios,
+ * así como la emisión y renovación de tokens JWT.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -26,7 +31,11 @@ public class AuthService {
 //    }
 
     /**
-     * Registra un nuevo usuario y devuelve su token JWT
+     * Registra un nuevo usuario, guarda su información en la base de datos
+     * y retorna un JWT junto con los datos del usuario.
+     *
+     * @param request Datos de registro del usuario
+     * @return JWT con datos del usuario
      */
     public JwtResponse register(RegisterRequest request) {
 
@@ -56,7 +65,10 @@ public class AuthService {
     }
 
     /**
-     * Autentica un usuario existente y devuelve su token JWT
+     * Autentica al usuario y genera un token JWT si las credenciales son válidas.
+     *
+     * @param request Credenciales de acceso
+     * @return Token JWT
      */
     public JwtResponse login(LoginRequest request) {
         authenticationManager.authenticate(
@@ -74,4 +86,18 @@ public class AuthService {
                 .token(jwtToken)
                 .build();
     }
+
+    /**
+     * Renueva un token JWT siempre que sea válido y no haya expirado completamente.
+     *
+     * @param token Token JWT actual
+     * @return Nuevo token JWT
+     */
+    public AuthResponse refreshToken(String token) {
+        String refreshedToken = jwtService.refreshToken(token);
+        return AuthResponse.builder()
+                .token(refreshedToken)
+                .build();
+    }
+
 }

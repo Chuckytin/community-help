@@ -9,7 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,6 +26,9 @@ public class JwtService {
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
+
+    @Value("${jwt.refresh-grace-period}")
+    private long refreshGracePeriod;
 
     /**
      * Genera un token JWT simple sin claims personalizados para un UserDetails.
@@ -65,7 +67,7 @@ public class JwtService {
     /**
      * Extrae el nombre de usuario (subject) del token.
      */
-    public String extractUsername(String token) {
+    public String extractUsername(String token) throws JwtException {
         return extractClaim(token, Claims::getSubject);
     }
 
@@ -128,6 +130,47 @@ public class JwtService {
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    /**
+     * Renueva un token JWT si está dentro del periodo de gracia.
+     * Si el token ha expirado recientemente, se genera uno nuevo con los mismos claims.
+     *
+     * @param token Token JWT a renovar
+     * @return Nuevo token JWT
+     * @throws JwtException si el token es inválido o demasiado antiguo
+     */
+    public String refreshToken(String token) throws JwtException {
+        try {
+            final Claims claims = extractAllClaims(token);
+            Date expiration = claims.getExpiration();
+
+            if (expiration != null &&
+                    expiration.before(new Date(System.currentTimeMillis() - refreshGracePeriod))) {
+                throw new JwtException("Token too old to refresh.");
+            }
+
+            return rebuildToken(claims);
+        } catch (ExpiredJwtException e) {
+            return rebuildToken(e.getClaims());
+        }
+    }
+
+    /**
+     * Reconstruye un token JWT con los claims proporcionados.
+     * Genera un nuevo token con la misma información pero con nueva fecha de emisión
+     * y firma.
+     *
+     * @param claims Los claims que contendrá el nuevo token
+     * @return El nuevo token JWT firmado y codificado
+     */
+    private String rebuildToken(Claims claims) {
+        return Jwts.builder()
+                .claims(claims)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(getSignInKey(), Jwts.SIG.HS256)
+                .compact();
     }
 
 }

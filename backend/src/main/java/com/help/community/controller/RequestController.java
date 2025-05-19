@@ -2,21 +2,30 @@ package com.help.community.controller;
 
 import com.help.community.dto.CreateRequestDTO;
 import com.help.community.dto.RequestResponseDTO;
+import com.help.community.dto.UpdateRequestDTO;
+import com.help.community.dto.UpdateStatusDTO;
+import com.help.community.exception.ResourceNotFoundException;
 import com.help.community.model.Request;
 import com.help.community.model.User;
 import com.help.community.repository.RequestRepository;
 import com.help.community.repository.UserRepository;
 import com.help.community.service.RequestService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.nio.file.AccessDeniedException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Controlador para manejar las operaciones relacionadas con solicitudes de ayuda.
@@ -37,6 +46,32 @@ public class RequestController {
     }
 
     /**
+     * Crea una nueva solicitud y devuelve el DTO de la solicitud creada.
+     * @param requestDTO Datos validados de la solicitud.
+     * @return ResponseEntity con el DTO de la solicitud y HTTP 201.
+     */
+    @PostMapping
+    public ResponseEntity<RequestResponseDTO> createRequest(
+            @Valid @RequestBody CreateRequestDTO requestDTO,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User creator = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+
+        Request request = new Request();
+        request.setTitle(requestDTO.getTitle());
+        request.setDescription(requestDTO.getDescription());
+        request.setCategory(requestDTO.getCategory());
+        request.setCreator(creator);
+
+        Request savedRequest = requestRepository.save(request);
+
+        return ResponseEntity
+                .created(URI.create("/api/requests/" + savedRequest.getRequest_id()))
+                .body(requestService.toDTO(savedRequest));
+    }
+
+    /**
      * Obtiene todas las solicitudes en formato DTO.
      * Convierte cada Request a RequestResponseDTO
      */
@@ -48,29 +83,184 @@ public class RequestController {
     }
 
     /**
-     * Crea una nueva solicitud y devuelve el DTO de la solicitud creada.
-     * @param requestDTO Datos validados de la solicitud.
-     * @return ResponseEntity con el DTO de la solicitud y HTTP 201.
+     *
+     *
+     * @param userId
+     * @return
      */
-    @PostMapping
-    public ResponseEntity<RequestResponseDTO> createRequest(@Valid @RequestBody CreateRequestDTO requestDTO) {
-        // TODO: Reemplazar con el usuario autenticado (tras implementar JWT)
-        User creator = userRepository.findById(1L).orElseThrow();
+    @GetMapping("/user/{userId}")
+    public List<RequestResponseDTO> getRequestsByUser(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Request request = new Request();
-        request.setTitle(requestDTO.getTitle());
-        request.setDescription(requestDTO.getDescription());
-        request.setCategory(requestDTO.getCategory());
-        request.setCreator(creator);
+        return user.getCreatedRequests().stream()
+                .map(requestService::toDTO)
+                .collect(Collectors.toList());
+    }
 
-        Request savedRequest = requestRepository.save(request);
+    /**
+     *
+     *
+     * @param userDetails
+     * @return
+     */
+    @GetMapping("/mine")
+    public List<RequestResponseDTO> getMyRequests(@AuthenticationPrincipal UserDetails userDetails) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // Convertir la entidad guardada a DTO antes de devolverla
-        RequestResponseDTO responseDTO = requestService.toDTO(savedRequest);
+        return user.getCreatedRequests().stream()
+                .map(requestService::toDTO)
+                .collect(Collectors.toList());
+    }
 
-        return ResponseEntity
-                .created(URI.create("/api/requests/" + savedRequest.getRequest_id()))
-                .body(responseDTO);
+    /**
+     * Obtiene una solicitud específica por su ID.
+     *
+     * @param id Identificador de la solicitud.
+     * @return ResponseEntity con el DTO de la solicitud encontrada.
+     */
+    @GetMapping("/{requestId}")
+    public ResponseEntity<RequestResponseDTO> getRequestById(@PathVariable("requestId") Long id) {
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+        return ResponseEntity.ok(requestService.toDTO(request));
+    }
+
+    /**
+     *
+     *
+     * @param id
+     * @param userDetails
+     * @return
+     */
+    @PatchMapping("/{requestId}/assign-volunteer")
+    public ResponseEntity<RequestResponseDTO> assignVolunteer(
+            @PathVariable("requestId") Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+
+        User volunteer = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        request.setVolunteer(volunteer);
+        request.setStatus("ACCEPTED");
+
+        return ResponseEntity.ok(requestService.toDTO(requestRepository.save(request)));
+    }
+
+    /**
+     * Obtiene todas las solicitudes en las que el usuario autenticado se ha ofrecido como voluntario.
+     *
+     * @param userDetails Usuario autenticado extraído del token JWT.
+     * @return Lista de solicitudes en las que el usuario actúa como voluntario.
+     */
+    @GetMapping("/volunteering")
+    public ResponseEntity<List<RequestResponseDTO>> getVolunteeringRequests(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = userRepository.findByEmailWithVolunteeredRequests(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        return ResponseEntity.ok(user.getVolunteeredRequests().stream()
+                .map(requestService::toDTO)
+                .collect(Collectors.toList()));
+    }
+
+    /**
+     *
+     *
+     * @param id
+     * @param statusDTO
+     * @param userDetails
+     * @return
+     * @throws AccessDeniedException
+     */
+    @PatchMapping("/{requestId}/status")
+    public ResponseEntity<RequestResponseDTO> updateStatus(
+            @PathVariable("requestId") Long id,
+            @Valid @RequestBody UpdateStatusDTO statusDTO,
+            @AuthenticationPrincipal UserDetails userDetails) throws AccessDeniedException {
+
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!request.getCreator().equals(user) && !request.getVolunteer().equals(user) && !user.getRoles().contains("ROLE_ADMIN")) {
+            throw new AccessDeniedException("You don't have permission to update this request");
+        }
+
+        request.setStatus(statusDTO.getStatus());
+        return ResponseEntity.ok(requestService.toDTO(requestRepository.save(request)));
+    }
+
+    /**
+     * Actualiza una solicitud existente si el usuario es el creador.
+     * - Verificar que el usuario es el creador
+     *
+     * @param id ID de la solicitud a actualizar.
+     * @param updateDTO Datos validados de la solicitud a actualizar.
+     * @param userDetails Usuario autenticado que realiza la acción.
+     * @return DTO de la solicitud actualizada.
+     * @throws AccessDeniedException si el usuario no es el creador de la solicitud.
+     */
+    @PutMapping("/{requestId}")
+    public ResponseEntity<RequestResponseDTO> updateRequest(
+            @PathVariable("requestId") Long id,
+            @Valid @RequestBody UpdateRequestDTO updateDTO,
+            @AuthenticationPrincipal UserDetails userDetails) throws AccessDeniedException {
+
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+
+        if (!request.getCreator().getEmail().equals(userDetails.getUsername())) {
+            throw new AccessDeniedException("You can only update your own requests");
+        }
+
+        request.setTitle(updateDTO.getTitle());
+        request.setDescription(updateDTO.getDescription());
+        request.setCategory(updateDTO.getCategory());
+        request.setStatus(updateDTO.getStatus());
+
+        Request updatedRequest = requestRepository.save(request);
+        return ResponseEntity.ok(requestService.toDTO(updatedRequest));
+    }
+
+    /**
+     * Elimina una solicitud si el usuario es el creador o un administrador.
+     * - Verifica que el usuario es el creador o admin.
+     *
+     * @param id ID de la solicitud a eliminar.
+     * @param userDetails Usuario autenticado que realiza la acción.
+     * @return ResponseEntity con headers informativos y estado HTTP 200.
+     * @throws AccessDeniedException si el usuario no tiene permisos para eliminarla.
+     */
+    @DeleteMapping("/{requestId}")
+    public ResponseEntity<Void> deleteRequest(
+            @PathVariable("requestId") Long id,
+            @AuthenticationPrincipal UserDetails userDetails) throws AccessDeniedException {
+
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!request.getCreator().equals(user) && !user.getRoles().contains("ROLE_ADMIN")) {
+            throw new AccessDeniedException("You don't have permission to delete this request");
+        }
+
+        requestRepository.delete(request);
+
+        return ResponseEntity.ok()
+                .header("message", "Request deleted successfully")
+                .header("requestId", id.toString())
+                .header("deletedAt", LocalDateTime.now().toString())
+                .build();
     }
 
 }
