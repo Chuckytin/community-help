@@ -64,12 +64,17 @@ public class RequestController {
         request.setCategory(requestDTO.getCategory());
         request.setCreator(creator);
 
+        if (requestDTO.getLatitude() != null && requestDTO.getLongitude() != null) {
+            request.setLocationFromLatLon(requestDTO.getLatitude(), requestDTO.getLongitude());
+        }
+
         Request savedRequest = requestRepository.save(request);
 
         return ResponseEntity
                 .created(URI.create("/api/requests/" + savedRequest.getRequest_id()))
                 .body(requestService.toDTO(savedRequest));
     }
+
 
     /**
      * Obtiene todas las solicitudes en formato DTO.
@@ -126,6 +131,29 @@ public class RequestController {
                 .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
         return ResponseEntity.ok(requestService.toDTO(request));
     }
+
+    /**
+     *
+     *
+     * @param latitude
+     * @param longitude
+     * @param radiusMeters
+     * @return
+     */
+    @GetMapping("/nearby")
+    public ResponseEntity<List<RequestResponseDTO>> getNearbyRequests(
+            @RequestParam double latitude,
+            @RequestParam double longitude,
+            @RequestParam(defaultValue = "5000") double radiusMeters
+    ) {
+        List<Request> nearbyRequests = requestRepository.findNearbyRequests(latitude, longitude, radiusMeters);
+        List<RequestResponseDTO> dtoList = nearbyRequests.stream()
+                .map(requestService::toDTO)
+                .toList();
+
+        return ResponseEntity.ok(dtoList);
+    }
+
 
     /**
      *

@@ -24,4 +24,7 @@ public class CreateRequestDTO {
     @NotBlank(message = "Category cannot be empty")
     private String category;
 
+    private Double latitude;
+    private Double longitude;
+
 }

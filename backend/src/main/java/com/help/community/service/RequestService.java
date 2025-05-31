@@ -48,27 +48,33 @@ public class RequestService {
      */
     public RequestResponseDTO toDTO(Request request) {
 
-        RequestResponseDTO dto = RequestResponseDTO.builder()
-                .id(request.getRequest_id())
-                .title(request.getTitle())
-                .description(request.getDescription())
-                .category(request.getCategory())
-                .status(request.getStatus())
-                .createdAt(request.getCreatedAt())
-                .creator(UserDTO.builder()
-                        .id(request.getCreator().getUser_id())
-                        .name(request.getCreator().getName())
-                        .role(request.getCreator().getMainRole())
-                        .build())
-                .build();
-
         UserDTO creatorDTO = UserDTO.builder()
                 .id(request.getCreator().getUser_id())
                 .name(request.getCreator().getName())
                 .role(request.getCreator().getMainRole())
                 .build();
 
-        return dto;
+        UserDTO volunteerDTO = null;
+        if (request.getVolunteer() != null) {
+            volunteerDTO = UserDTO.builder()
+                    .id(request.getVolunteer().getUser_id())
+                    .name(request.getVolunteer().getName())
+                    .role(request.getVolunteer().getMainRole())
+                    .build();
+        }
+
+        return RequestResponseDTO.builder()
+                .id(request.getRequest_id())
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .category(request.getCategory())
+                .status(request.getStatus())
+                .createdAt(request.getCreatedAt())
+                .creator(creatorDTO)
+                .volunteer(volunteerDTO)
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
+                .build();
     }
 
 }

@@ -53,7 +53,7 @@ public class RequestRepositoryTest {
         entityManager.flush();
 
         // Then
-        assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getRequest_id()).isNotNull();
         assertThat(requestRepository.count()).isEqualTo(2); // 1 de data.sql + este nuevo
     }
 

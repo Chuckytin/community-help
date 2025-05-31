@@ -23,4 +23,15 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
 
     @EntityGraph(attributePaths = {"creator", "volunteer"})
     List<Request> findByVolunteer(User volunteer);
+
+    @Query(value = """
+    SELECT * FROM requests 
+    WHERE ST_DWithin(location, ST_MakePoint(:longitude, :latitude)::geography, :radius)
+    AND status = 'PENDIENTE'
+    """, nativeQuery = true)
+    List<Request> findNearbyRequests(
+            @Param("latitude") double latitude,
+            @Param("longitude") double longitude,
+            @Param("radius") double radiusInMeters);
+
 }

@@ -32,4 +32,7 @@ public class RequestResponseDTO {
      */
     private UserDTO volunteer;
 
+    private Double latitude;
+    private Double longitude;
+
 }
