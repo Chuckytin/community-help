@@ -19,7 +19,7 @@ public class RequestResponseDTO {
     private String category;
     private String status;
     private LocalDateTime createdAt;
-
+    private LocalDateTime deadline;
     /**
      * Usuario creador de la solicitud.
      * Se expone el nombre y el rol.

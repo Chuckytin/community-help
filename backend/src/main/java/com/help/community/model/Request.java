@@ -55,6 +55,8 @@ public class Request {
     @JdbcTypeCode(SqlTypes.GEOGRAPHY)
     private Point location;
 
+    private LocalDateTime deadline;
+
     public Request() {}
 
     public Request(String title, String description, String category, User creator) {
@@ -66,7 +68,7 @@ public class Request {
 
     public void setLocationFromLatLon(double latitude, double longitude) {
         this.location = new GeometryFactory().createPoint(new Coordinate(longitude, latitude));
-        this.location.setSRID(4326); // Importante
+        this.location.setSRID(4326);
     }
 
     public double getLatitude() {

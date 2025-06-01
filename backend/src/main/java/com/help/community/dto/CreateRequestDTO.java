@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * DTO para la creación de una nueva solicitud de ayuda.
  * Valida los datos antes de convertirlos en una entidad Request.
@@ -26,5 +28,6 @@ public class CreateRequestDTO {
 
     private Double latitude;
     private Double longitude;
+    private LocalDateTime deadline;
 
 }

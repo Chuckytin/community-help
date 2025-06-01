@@ -25,13 +25,19 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     List<Request> findByVolunteer(User volunteer);
 
     @Query(value = """
-    SELECT * FROM requests 
-    WHERE ST_DWithin(location, ST_MakePoint(:longitude, :latitude)::geography, :radius)
-    AND status = 'PENDIENTE'
+    SELECT * FROM requests
+    WHERE ST_DWithin(
+        location,
+        ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+        :radius
+    )
+    AND deadline IS NOT NULL
+    AND deadline > NOW()
     """, nativeQuery = true)
     List<Request> findNearbyRequests(
             @Param("latitude") double latitude,
             @Param("longitude") double longitude,
-            @Param("radius") double radiusInMeters);
+            @Param("radius") double radiusInMeters
+    );
 
 }

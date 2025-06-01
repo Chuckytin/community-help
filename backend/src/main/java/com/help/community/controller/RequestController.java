@@ -9,6 +9,7 @@ import com.help.community.model.Request;
 import com.help.community.model.User;
 import com.help.community.repository.RequestRepository;
 import com.help.community.repository.UserRepository;
+import com.help.community.service.OpenRouteService;
 import com.help.community.service.RequestService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -23,8 +24,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.nio.file.AccessDeniedException;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -38,15 +43,19 @@ public class RequestController {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final RequestService requestService;
+    private final OpenRouteService openRouteService;
 
-    public RequestController(RequestRepository requestRepository, UserRepository userRepository, RequestService requestService) {
+    public RequestController(RequestRepository requestRepository, UserRepository userRepository,
+                             RequestService requestService, OpenRouteService openRouteService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;
+        this.openRouteService = openRouteService;
     }
 
     /**
      * Crea una nueva solicitud y devuelve el DTO de la solicitud creada.
+     *
      * @param requestDTO Datos validados de la solicitud.
      * @return ResponseEntity con el DTO de la solicitud y HTTP 201.
      */
@@ -62,6 +71,7 @@ public class RequestController {
         request.setTitle(requestDTO.getTitle());
         request.setDescription(requestDTO.getDescription());
         request.setCategory(requestDTO.getCategory());
+        request.setDeadline(requestDTO.getDeadline());
         request.setCreator(creator);
 
         if (requestDTO.getLatitude() != null && requestDTO.getLongitude() != null) {
@@ -88,10 +98,7 @@ public class RequestController {
     }
 
     /**
-     *
-     *
-     * @param userId
-     * @return
+     * Obtiene todas las solicitudes creadas por un usuario específico.
      */
     @GetMapping("/user/{userId}")
     public List<RequestResponseDTO> getRequestsByUser(@PathVariable Long userId) {
@@ -104,7 +111,7 @@ public class RequestController {
     }
 
     /**
-     *
+     * Obtiene todas las solicitudes creadas por el usuario autenticado.
      *
      * @param userDetails
      * @return
@@ -133,30 +140,46 @@ public class RequestController {
     }
 
     /**
+     * Obtiene una lista de solicitudes cercanas dentro de un radio dado,
+     * filtradas por urgencia (tiempo estimado de viaje <= tiempo restante hasta el deadline)
+     * y ordenadas por proximidad (menor duración estimada de viaje).
+     * Usa la API de OpenRouteService para estimar la duración del trayecto en coche entre
+     * el voluntario y cada solicitud.
      *
-     *
-     * @param latitude
-     * @param longitude
-     * @param radiusMeters
-     * @return
+     * @param latitude Latitud del voluntario (en grados decimales).
+     * @param longitude Longitud del voluntario (en grados decimales).
+     * @param radiusMeters Radio de búsqueda en metros (por defecto 5000m).
+     * @return Lista de solicitudes ordenadas por proximidad, filtradas por urgencia si corresponde.
      */
     @GetMapping("/nearby")
     public ResponseEntity<List<RequestResponseDTO>> getNearbyRequests(
             @RequestParam double latitude,
             @RequestParam double longitude,
-            @RequestParam(defaultValue = "5000") double radiusMeters
-    ) {
-        List<Request> nearbyRequests = requestRepository.findNearbyRequests(latitude, longitude, radiusMeters);
-        List<RequestResponseDTO> dtoList = nearbyRequests.stream()
-                .map(requestService::toDTO)
-                .toList();
+            @RequestParam(defaultValue = "5000") double radiusMeters) {
 
-        return ResponseEntity.ok(dtoList);
+        List<Request> rawResults = requestRepository.findNearbyRequests(latitude, longitude, radiusMeters);
+        System.out.println("Resultados crudos de BD: " + rawResults.size());
+
+        List<RequestResponseDTO> result = rawResults.stream()
+                .map(request -> {
+                    try {
+                        long travelTime = openRouteService.getEstimatedTravelTimeInSeconds(
+                                latitude, longitude,
+                                request.getLatitude(), request.getLongitude()
+                        );
+                        return requestService.toDTO(request);
+                    } catch (Exception e) {
+                        return requestService.toDTO(request);
+                    }
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
     }
 
-
     /**
-     *
+     * Asigna al usuario autenticado como voluntario de una solicitud específica.
+     * Cambia automáticamente el estado de la solicitud a 'ACEPTADO'.
      *
      * @param id
      * @param userDetails
@@ -174,7 +197,7 @@ public class RequestController {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         request.setVolunteer(volunteer);
-        request.setStatus("ACCEPTED");
+        request.setStatus("ACEPTADO");
 
         return ResponseEntity.ok(requestService.toDTO(requestRepository.save(request)));
     }
@@ -198,7 +221,8 @@ public class RequestController {
     }
 
     /**
-     *
+     * Actualiza el estado de una solicitud.
+     * Solo pueden hacerlo el creador, el voluntario asignado o un administrador.
      *
      * @param id
      * @param statusDTO
