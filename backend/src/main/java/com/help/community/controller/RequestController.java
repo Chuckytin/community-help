@@ -158,20 +158,31 @@ public class RequestController {
             @RequestParam(defaultValue = "5000") double radiusMeters) {
 
         List<Request> rawResults = requestRepository.findNearbyRequests(latitude, longitude, radiusMeters);
-        System.out.println("Resultados crudos de BD: " + rawResults.size());
 
         List<RequestResponseDTO> result = rawResults.stream()
                 .map(request -> {
+                    RequestResponseDTO dto = requestService.toDTO(request);
                     try {
-                        long travelTime = openRouteService.getEstimatedTravelTimeInSeconds(
+                        OpenRouteService.TravelTimeResponse travelInfo = openRouteService.getTravelTime(
                                 latitude, longitude,
                                 request.getLatitude(), request.getLongitude()
                         );
-                        return requestService.toDTO(request);
+                        dto.setTravelDistance(travelInfo.getDistance());
+                        dto.setTravelDuration(travelInfo.getDuration());
+
+                        if (request.getDeadline() != null) {
+                            long remainingTime = Duration.between(LocalDateTime.now(), request.getDeadline()).getSeconds();
+                            dto.setReachable(travelInfo.getDuration() <= remainingTime);
+                        }
                     } catch (Exception e) {
-                        return requestService.toDTO(request);
+                        System.err.print("Error calculating travel time: " + e.getMessage());
+                        dto.setReachable(false);
                     }
+                    return dto;
                 })
+                .filter(dto -> dto.getDeadline() == null || Boolean.TRUE.equals(dto.getReachable()))
+                .sorted(Comparator.comparingDouble(dto ->
+                        dto.getTravelDistance() != null ? dto.getTravelDistance() : Double.MAX_VALUE))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(result);

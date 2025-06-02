@@ -35,4 +35,8 @@ public class RequestResponseDTO {
     private Double latitude;
     private Double longitude;
 
+    private Double travelDistance;  // en metros
+    private Double travelDuration;  // en segundos
+    private Boolean reachable;      // si el voluntario puede llegar a tiempo
+
 }
