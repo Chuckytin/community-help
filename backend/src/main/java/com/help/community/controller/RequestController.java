@@ -1,5 +1,6 @@
 package com.help.community.controller;
 
+import com.help.community.controller.utils.RequestControllerUtils;
 import com.help.community.dto.CreateRequestDTO;
 import com.help.community.dto.RequestResponseDTO;
 import com.help.community.dto.UpdateRequestDTO;
@@ -24,12 +25,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.nio.file.AccessDeniedException;
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -43,14 +41,14 @@ public class RequestController {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final RequestService requestService;
-    private final OpenRouteService openRouteService;
+    private final RequestControllerUtils requestControllerUtils;
 
     public RequestController(RequestRepository requestRepository, UserRepository userRepository,
-                             RequestService requestService, OpenRouteService openRouteService) {
+                             RequestService requestService, RequestControllerUtils requestControllerUtils) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;
-        this.openRouteService = openRouteService;
+        this.requestControllerUtils = requestControllerUtils;
     }
 
     /**
@@ -113,8 +111,6 @@ public class RequestController {
     /**
      * Obtiene todas las solicitudes creadas por el usuario autenticado.
      *
-     * @param userDetails
-     * @return
      */
     @GetMapping("/mine")
     public List<RequestResponseDTO> getMyRequests(@AuthenticationPrincipal UserDetails userDetails) {
@@ -155,33 +151,30 @@ public class RequestController {
     public ResponseEntity<List<RequestResponseDTO>> getNearbyRequests(
             @RequestParam double latitude,
             @RequestParam double longitude,
-            @RequestParam(defaultValue = "5000") double radiusMeters) {
+            @RequestParam(defaultValue = "10000") double radiusMeters,
+            @RequestParam(required = false) String transportMode) {
 
-        List<Request> rawResults = requestRepository.findNearbyRequests(latitude, longitude, radiusMeters);
+        // Validar coordenadas
+        if (!requestControllerUtils.isValidCoordinate(latitude, longitude)) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        List<RequestResponseDTO> result = rawResults.stream()
+        // Determinar modo de transporte (valor por defecto: "foot-walking")
+        OpenRouteService.TransportMode mode = requestControllerUtils.parseTransportMode(transportMode);
+
+        // Obtener solicitudes
+        List<Request> requests = (mode == OpenRouteService.TransportMode.DRIVING_CAR) ?
+                requestRepository.findAllPendingRequests() : // Sin filtro de distancia para coche
+                requestRepository.findNearbyPendingRequests(latitude, longitude, radiusMeters);
+
+        // Procesar resultados
+        List<RequestResponseDTO> result = requests.stream()
                 .map(request -> {
                     RequestResponseDTO dto = requestService.toDTO(request);
-                    try {
-                        OpenRouteService.TravelTimeResponse travelInfo = openRouteService.getTravelTime(
-                                latitude, longitude,
-                                request.getLatitude(), request.getLongitude()
-                        );
-                        dto.setTravelDistance(travelInfo.getDistance());
-                        dto.setTravelDuration(travelInfo.getDuration());
-
-                        if (request.getDeadline() != null) {
-                            long remainingTime = Duration.between(LocalDateTime.now(), request.getDeadline()).getSeconds();
-                            dto.setReachable(travelInfo.getDuration() <= remainingTime);
-                        }
-                    } catch (Exception e) {
-                        System.err.print("Error calculating travel time: " + e.getMessage());
-                        dto.setReachable(false);
-                    }
+                    requestControllerUtils.calculateReachability(latitude, longitude, request, dto, mode);
                     return dto;
                 })
-                .filter(dto -> dto.getDeadline() == null || Boolean.TRUE.equals(dto.getReachable()))
-                .sorted(Comparator.comparingDouble(dto ->
+                .sorted(Comparator.comparing(dto ->
                         dto.getTravelDistance() != null ? dto.getTravelDistance() : Double.MAX_VALUE))
                 .collect(Collectors.toList());
 
@@ -191,10 +184,6 @@ public class RequestController {
     /**
      * Asigna al usuario autenticado como voluntario de una solicitud específica.
      * Cambia automáticamente el estado de la solicitud a 'ACEPTADO'.
-     *
-     * @param id
-     * @param userDetails
-     * @return
      */
     @PatchMapping("/{requestId}/assign-volunteer")
     public ResponseEntity<RequestResponseDTO> assignVolunteer(
@@ -234,12 +223,6 @@ public class RequestController {
     /**
      * Actualiza el estado de una solicitud.
      * Solo pueden hacerlo el creador, el voluntario asignado o un administrador.
-     *
-     * @param id
-     * @param statusDTO
-     * @param userDetails
-     * @return
-     * @throws AccessDeniedException
      */
     @PatchMapping("/{requestId}/status")
     public ResponseEntity<RequestResponseDTO> updateStatus(

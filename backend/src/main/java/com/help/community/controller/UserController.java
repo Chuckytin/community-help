@@ -6,7 +6,6 @@ import com.help.community.exception.ResourceNotFoundException;
 import com.help.community.model.User;
 import com.help.community.repository.UserRepository;
 import com.help.community.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

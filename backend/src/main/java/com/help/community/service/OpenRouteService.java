@@ -29,30 +29,69 @@ public class OpenRouteService {
                 .build();
     }
 
+    public enum TransportMode {
+        FOOT_WALKING("foot-walking", 5000),  // Radio máximo recomendado: 5km
+        DRIVING_CAR("driving-car", 500000),   // Radio máximo: 500km
+        CYCLING("cycling-regular", 20000);   // Radio máximo: 20km
 
-    //TODO: añadir medios de transporte
-    public TravelTimeResponse getTravelTime(double fromLat, double fromLon, double toLat, double toLon) {
+        private final String apiValue;
+        @Getter
+        private final int maxRadius;
+
+        TransportMode(String apiValue, int maxRadius) {
+            this.apiValue = apiValue;
+            this.maxRadius = maxRadius;
+        }
+
+
+    }
+
+    public TravelTimeResponse getTravelTime(double fromLat, double fromLon,
+                                            double toLat, double toLon,
+                                            TransportMode mode) {
         try {
+            // 1. Validación de distancia
+            double distance = calculateHaversineDistance(fromLat, fromLon, toLat, toLon);
+            if (distance > mode.maxRadius) {
+                throw new IllegalArgumentException("Distance exceeds maximum for " + mode);
+            }
+
+            // 2. Llamada a la API
             String url = String.format(
                     Locale.US,
-                    "https://api.openrouteservice.org/v2/directions/foot-walking?api_key=%s&start=%f,%f&end=%f,%f",
-                    apiKey, fromLon, fromLat, toLon, toLat
+                    "https://api.openrouteservice.org/v2/directions/%s?api_key=%s&start=%f,%f&end=%f,%f",
+                    mode.apiValue, apiKey, fromLon, fromLat, toLon, toLat
             );
 
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-            JSONObject json = new JSONObject(response.getBody());
-            JSONObject summary = json.getJSONArray("features")
-                    .getJSONObject(0)
-                    .getJSONObject("properties")
-                    .getJSONObject("summary");
-
-            return new TravelTimeResponse(
-                    summary.getDouble("distance"),
-                    summary.getDouble("duration")
-            );
+            return parseResponse(response.getBody());
         } catch (Exception e) {
-            throw new RuntimeException("Error calling OpenRouteService: " + e.getMessage());
+            throw new RuntimeException("Error calling OpenRouteService: " + e.getMessage(), e);
         }
+    }
+
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Radio de la Tierra en km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c * 1000;
+    }
+
+    private TravelTimeResponse parseResponse(String jsonResponse) {
+        JSONObject json = new JSONObject(jsonResponse);
+        JSONObject summary = json.getJSONArray("features")
+                .getJSONObject(0)
+                .getJSONObject("properties")
+                .getJSONObject("summary");
+
+        return new TravelTimeResponse(
+                summary.getDouble("distance"),
+                summary.getDouble("duration")
+        );
     }
 
     @Getter
