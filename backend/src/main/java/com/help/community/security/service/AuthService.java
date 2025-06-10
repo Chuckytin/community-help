@@ -26,11 +26,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
 
-//    public User register(User user) {
-//        user.setPassword(passwordEncoder.encode(user.getPassword()));
-//        return userRepository.saveAndFlush(user);
-//    }
-
     /**
      * Registra un nuevo usuario, guarda su información en la base de datos
      * y retorna un JWT junto con los datos del usuario.

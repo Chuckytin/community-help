@@ -58,6 +58,12 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "volunteer")
     private List<Request> volunteeredRequests;
 
+    @Column(name = "provider")
+    private String provider; // "google", "local", etc.
+
+    @Column(name = "provider_id")
+    private String providerId;
+
     public User() { }
 
     public User(String email, String name, String password) {
@@ -79,6 +85,10 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (this.roles == null) {
+            return List.of(); // o Set.of(new SimpleGrantedAuthority("ROLE_USER"))
+        }
+
         return this.roles.stream()
                 .map(role -> new SimpleGrantedAuthority(role.name()))
                 .collect(Collectors.toList());

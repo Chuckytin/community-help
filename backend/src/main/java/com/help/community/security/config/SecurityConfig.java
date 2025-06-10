@@ -1,5 +1,7 @@
-package com.help.community.security;
+package com.help.community.security.config;
 
+import com.help.community.security.oauth2.service.CustomOAuth2UserService;
+import com.help.community.security.oauth2.handler.OAuth2SuccessHandler;
 import com.help.community.security.web.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -8,9 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -27,29 +27,36 @@ import org.springframework.web.filter.CorsFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oauth2SuccessHandler;
 
     /**
-     * Configura la cadena de filtros de seguridad, define rutas públicas
-     * y deshabilita CSRF para pruebas.
+     * Configura la cadena de filtros de seguridad.
      *
-     * @param http configuración HTTP
-     * @param jwtAuthFilter filtro personalizado de autenticación JWT
-     * @return Cadena de filtros de seguridad
-     * @throws Exception
+     * - Desactiva CSRF
+     * - Permite acceso público a rutas específicas.
+     * - Habilita login OAuth2 con userService y successHandler personalizados.
+     * - Añade el filtro JWT antes del filtro de autenticación por usuario/contraseña.
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthFilter
-    ) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/swagger-ui/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
+                                "/api/oauth2/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(sess -> sess
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oauth2SuccessHandler)
+                )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -64,13 +71,9 @@ public class SecurityConfig {
     }
 
     /**
-     * Provee el codificador de contraseñas (BCrypt).
+     * Configura un filtro CORS que permite solicitudes desde cualquier origen.
+     * Útil para desarrollo, pero se recomienda restringirlo en producción.
      */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

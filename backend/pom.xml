@@ -12,7 +12,7 @@
 
 	<groupId>com.help</groupId>
 	<artifactId>backend</artifactId>
-	<version>0.4.1</version>
+	<version>0.5.0</version>
 	<name>CommunityHelp</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
@@ -49,6 +49,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<!--  -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
 		</dependency>
 		<!-- Spring MVC - Para Tomcat embebido y soporte para APIs REST -->
 		<dependency>

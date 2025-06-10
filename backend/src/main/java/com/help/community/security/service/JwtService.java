@@ -40,9 +40,6 @@ public class JwtService {
         return buildToken(extraClaims, userDetails, jwtProperties.getExpiration());
     }
 
-    /**
-     *
-     */
     private String buildToken(
             Map<String, Object> extraClaims,
             UserDetails userDetails,
