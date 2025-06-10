@@ -1,11 +1,12 @@
-package com.help.community.security.auth;
+package com.help.community.security.service;
 
-import com.help.community.dto.AuthResponse;
 import com.help.community.dto.UserDTO;
 import com.help.community.exception.EmailAlreadyExistsException;
 import com.help.community.model.User;
 import com.help.community.repository.UserRepository;
-import com.help.community.security.jwt.JwtService;
+import com.help.community.security.dto.JwtResponse;
+import com.help.community.security.dto.LoginRequest;
+import com.help.community.security.dto.RegisterRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,8 +39,7 @@ public class AuthService {
      * @return JWT con datos del usuario
      */
     public JwtResponse register(RegisterRequest request) {
-
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException(request.getEmail());
         }
 
@@ -50,18 +50,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
-
-        var jwtToken = jwtService.generateToken(user);
-        return JwtResponse.of(jwtToken, convertToDTO(savedUser));
-    }
-
-    private UserDTO convertToDTO(User user) {
-        return UserDTO.builder()
-                .id(user.getUser_id())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getMainRole())
-                .build();
+        return buildJwtResponse(savedUser);
     }
 
     /**
@@ -81,11 +70,9 @@ public class AuthService {
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow();
 
-        var jwtToken = jwtService.generateToken(user);
-        return JwtResponse.builder()
-                .token(jwtToken)
-                .build();
+        return buildJwtResponse(user);
     }
+
 
     /**
      * Renueva un token JWT siempre que sea válido y no haya expirado completamente.
@@ -93,10 +80,28 @@ public class AuthService {
      * @param token Token JWT actual
      * @return Nuevo token JWT
      */
-    public AuthResponse refreshToken(String token) {
+    public JwtResponse refreshToken(String token) {
         String refreshedToken = jwtService.refreshToken(token);
-        return AuthResponse.builder()
-                .token(refreshedToken)
+        return JwtResponse.builder()
+                .accessToken(refreshedToken)
+                .build();
+    }
+
+    private JwtResponse buildJwtResponse(User user) {
+        String token = jwtService.generateToken(user);
+        return JwtResponse.builder()
+                .accessToken(token)
+                .user(convertToDTO(user))
+                .expiresAt(jwtService.extractExpiration(token).toInstant())
+                .build();
+    }
+
+    private UserDTO convertToDTO(User user) {
+        return UserDTO.builder()
+                .id(user.getUser_id())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getMainRole())
                 .build();
     }
 

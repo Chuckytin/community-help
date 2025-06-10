@@ -1,10 +1,11 @@
-package com.help.community.security.jwt;
+package com.help.community.security.service;
 
+import com.help.community.security.jwt.JwtProperties;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -17,18 +18,13 @@ import java.util.function.Function;
  * Servicio para la gestión de tokens JWT:
  * - Generación de tokens
  * - Validación y extracción de datos del token
+ * - Configuración centralizada con JwtProperties
  */
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
-    @Value("${jwt.secret-key}")
-    private String secretKey;
-
-    @Value("${jwt.expiration}")
-    private long jwtExpiration;
-
-    @Value("${jwt.refresh-grace-period}")
-    private long refreshGracePeriod;
+    private final JwtProperties jwtProperties;
 
     /**
      * Genera un token JWT simple sin claims personalizados para un UserDetails.
@@ -41,11 +37,22 @@ public class JwtService {
      * Genera token JWT con claims personalizados
      */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        return buildToken(extraClaims, userDetails, jwtProperties.getExpiration());
+    }
+
+    /**
+     *
+     */
+    private String buildToken(
+            Map<String, Object> extraClaims,
+            UserDetails userDetails,
+            long expiration
+    ) {
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(userDetails.getUsername())
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSignInKey(), Jwts.SIG.HS256)
                 .compact();
     }
@@ -116,9 +123,9 @@ public class JwtService {
         } catch (ExpiredJwtException e) {
             throw new JwtException("Token expirated", e);
         } catch (SignatureException e) {
-            throw new JwtException("Firma inválida", e);
+            throw new JwtException("Invalid sign", e);
         } catch (MalformedJwtException e) {
-            throw new JwtException("Token mal formado", e);
+            throw new JwtException("Malformed token", e);
         }
     }
 
@@ -128,7 +135,7 @@ public class JwtService {
      * @return clave de firma.
      */
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.getSecretKey());
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
@@ -146,7 +153,7 @@ public class JwtService {
             Date expiration = claims.getExpiration();
 
             if (expiration != null &&
-                    expiration.before(new Date(System.currentTimeMillis() - refreshGracePeriod))) {
+                    expiration.before(new Date(System.currentTimeMillis() - jwtProperties.getRefreshGracePeriod()))) {
                 throw new JwtException("Token too old to refresh.");
             }
 
@@ -168,7 +175,7 @@ public class JwtService {
         return Jwts.builder()
                 .claims(claims)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .expiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration()))
                 .signWith(getSignInKey(), Jwts.SIG.HS256)
                 .compact();
     }

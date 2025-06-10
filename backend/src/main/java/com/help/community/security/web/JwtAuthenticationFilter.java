@@ -1,6 +1,6 @@
-package com.help.community.security.auth;
+package com.help.community.security.web;
 
-import com.help.community.security.jwt.JwtService;
+import com.help.community.security.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
