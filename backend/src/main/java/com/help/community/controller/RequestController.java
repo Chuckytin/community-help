@@ -1,5 +1,6 @@
 package com.help.community.controller;
 
+import com.help.community.controller.event.RequestStatusChangedEvent;
 import com.help.community.controller.utils.RequestControllerUtils;
 import com.help.community.dto.CreateRequestDTO;
 import com.help.community.dto.RequestResponseDTO;
@@ -13,6 +14,7 @@ import com.help.community.repository.UserRepository;
 import com.help.community.service.OpenRouteService;
 import com.help.community.service.RequestService;
 import jakarta.validation.Valid;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -42,13 +44,16 @@ public class RequestController {
     private final UserRepository userRepository;
     private final RequestService requestService;
     private final RequestControllerUtils requestControllerUtils;
+    private final ApplicationEventPublisher eventPublisher;
 
     public RequestController(RequestRepository requestRepository, UserRepository userRepository,
-                             RequestService requestService, RequestControllerUtils requestControllerUtils) {
+                             RequestService requestService, RequestControllerUtils requestControllerUtils,
+                             ApplicationEventPublisher eventPublisher) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;
         this.requestControllerUtils = requestControllerUtils;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -233,15 +238,13 @@ public class RequestController {
         Request request = requestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        if (!request.getCreator().equals(user) && !request.getVolunteer().equals(user) && !user.getRoles().contains("ROLE_ADMIN")) {
-            throw new AccessDeniedException("You don't have permission to update this request");
-        }
-
+        String oldStatus = request.getStatus();
         request.setStatus(statusDTO.getStatus());
-        return ResponseEntity.ok(requestService.toDTO(requestRepository.save(request)));
+        Request updatedRequest = requestRepository.save(request);
+
+        eventPublisher.publishEvent(new RequestStatusChangedEvent(this, updatedRequest, oldStatus));
+
+        return ResponseEntity.ok(requestService.toDTO(updatedRequest));
     }
 
     /**

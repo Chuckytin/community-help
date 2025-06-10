@@ -42,6 +42,8 @@ public class AuthService {
                 .email(request.getEmail())
                 .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .phoneNumber(request.getPhoneNumber())
+                .provider("local")
                 .build();
 
         User savedUser = userRepository.save(user);

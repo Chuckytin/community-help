@@ -39,6 +39,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "phone_number", unique = true)
+    private String phoneNumber;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
@@ -59,7 +62,7 @@ public class User implements UserDetails {
     private List<Request> volunteeredRequests;
 
     @Column(name = "provider")
-    private String provider; // "google", "local", etc.
+    private String provider = "local";
 
     @Column(name = "provider_id")
     private String providerId;
@@ -86,7 +89,7 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.roles == null) {
-            return List.of(); // o Set.of(new SimpleGrantedAuthority("ROLE_USER"))
+            return List.of();
         }
 
         return this.roles.stream()

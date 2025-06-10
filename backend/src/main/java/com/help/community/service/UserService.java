@@ -55,6 +55,7 @@ public class UserService implements UserDetailsService {
                 .id(user.getUser_id())
                 .name(user.getName())
                 .role(user.getMainRole())
+                .phoneNumber(user.getPhoneNumber())
                 .build();
     }
 

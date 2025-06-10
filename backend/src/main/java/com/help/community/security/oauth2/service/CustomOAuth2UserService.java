@@ -57,6 +57,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .roles(Set.of(User.Role.ROLE_USER))
                 .provider(provider)
                 .providerId(userInfo.getId())
+                .phoneNumber(null)
                 .build();
 
         return userRepository.save(newUser);
