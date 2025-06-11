@@ -8,7 +8,7 @@ COPY backend/pom.xml .
 COPY backend/src ./src
 
 # Build de la aplicación (ignora tests para producción)
-RUN mvn clean package -DskipTests
+RUN ./mvnw clean package -DskipTests
 
 # Puerto expuesto (server.port)
 EXPOSE 8080
