@@ -1,7 +1,8 @@
 package com.help.community.repository;
 
-import com.help.community.model.Request;
-import com.help.community.model.User;
+import com.help.community.request.model.Request;
+import com.help.community.user.model.User;
+import com.help.community.request.repository.RequestRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
