@@ -4,8 +4,13 @@ FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
 # Archivos necesarios para aprovechar caché de Docker
+COPY backend/mvnw .
+COPY backend/.mvn/ .mvn/
 COPY backend/pom.xml .
 COPY backend/src ./src
+
+# Permisos de ejecución al mvnw
+RUN chmod +x mvnw
 
 # Build de la aplicación (ignora tests para producción)
 RUN ./mvnw clean package -DskipTests
