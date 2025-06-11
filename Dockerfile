@@ -1,5 +1,5 @@
 # Imagen de JetBrains Runtime 17
-FROM jetbrains/jdk:17.0.14
+FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
