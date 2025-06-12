@@ -11,6 +11,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Controlador REST para operaciones de autenticación de usuarios.
  * Proporciona endpoints públicos para registro, login y renovación de tokens.
@@ -64,6 +67,14 @@ public class AuthController {
             throw new JwtException("Invalid authorization header");
         }
         return ResponseEntity.ok(authService.refreshToken(authHeader.substring(7)));
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "OK");
+        response.put("version", "1.0.0");
+        return ResponseEntity.ok(response);
     }
 
 }
