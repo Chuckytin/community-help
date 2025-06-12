@@ -8,10 +8,12 @@ import io.jsonwebtoken.JwtException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -69,12 +71,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.refreshToken(authHeader.substring(7)));
     }
 
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> healthCheck() {
-        Map<String, String> response = new HashMap<>();
+    @GetMapping(value = "/health", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, String> healthCheck() {
+        Map<String, String> response = new LinkedHashMap<>();
         response.put("status", "OK");
         response.put("version", "1.0.0");
-        return ResponseEntity.ok(response);
+        return response;
     }
 
 }
