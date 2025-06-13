@@ -1,10 +1,10 @@
 enum UserRole {
-  ROLE_USER,
-  ROLE_ADMIN,
+  roleUser,
+  roleAdmin,
 }
 
 class UserDTO {
-  final Long id;
+  final int id;
   final String name;
   final String email;
   final Set<UserRole> roles;
@@ -24,7 +24,7 @@ class UserDTO {
       roles: (json['roles'] as List)
           .map((role) => UserRole.values.firstWhere(
                 (e) => e.toString() == 'UserRole.$role',
-                orElse: () => UserRole.ROLE_USER,
+                orElse: () => UserRole.roleUser,
               ))
           .toSet(),
     );
@@ -56,7 +56,7 @@ class UserProfileDTO extends UserDTO {
       roles: (json['roles'] as List)
           .map((role) => UserRole.values.firstWhere(
                 (e) => e.toString() == 'UserRole.$role',
-                orElse: () => UserRole.ROLE_USER,
+                orElse: () => UserRole.roleUser,
               ))
           .toSet(),
       phone: json['phone'],
@@ -64,5 +64,49 @@ class UserProfileDTO extends UserDTO {
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );
+  }
+}
+
+class User {
+  final String id;
+  final String email;
+  final String name;
+  final String phoneNumber;
+  final String? profilePicture;
+  final double? latitude;
+  final double? longitude;
+
+  User({
+    required this.id,
+    required this.email,
+    required this.name,
+    required this.phoneNumber,
+    this.profilePicture,
+    this.latitude,
+    this.longitude,
+  });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      name: json['name'] as String,
+      phoneNumber: json['phoneNumber'] as String,
+      profilePicture: json['profilePicture'] as String?,
+      latitude: json['latitude'] as double?,
+      longitude: json['longitude'] as double?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'name': name,
+      'phoneNumber': phoneNumber,
+      'profilePicture': profilePicture,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
   }
 } 

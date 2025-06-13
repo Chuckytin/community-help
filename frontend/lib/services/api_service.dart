@@ -1,59 +1,26 @@
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:frontend/models/auth_models.dart';
-import 'package:frontend/models/user_models.dart';
-import '../models/user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/auth_models.dart';
+import '../models/user_models.dart';
 import '../models/request.dart';
 
 class ApiService {
-  final String baseUrl;
-  String? _token;
+  static const String baseUrl = 'http://localhost:8080/api';
+  static const String tokenKey = 'auth_token';
+  static const String refreshTokenKey = 'refresh_token';
 
-  ApiService() : baseUrl = dotenv.env['API_URL'] ?? 'http://localhost:8080';
-
-  void setToken(String token) {
-    _token = token;
-  }
-
-  Map<String, String> get _headers {
-    return {
-      'Content-Type': 'application/json',
-      if (_token != null) 'Authorization': 'Bearer $_token',
-    };
-  }
-
-  Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
-  Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', token);
-  }
-
-  Future<void> deleteToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-  }
-
-  bool isTokenExpired(String token) {
-    return JwtDecoder.isExpired(token);
-  }
-
+  // Métodos de autenticación
   Future<JwtResponse> login(LoginRequest request) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
-      headers: _headers,
-      body: json.encode(request.toJson()),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(request.toJson()),
     );
 
     if (response.statusCode == 200) {
-      final jwtResponse = JwtResponse.fromJson(json.decode(response.body));
-      await saveToken(jwtResponse.token);
+      final jwtResponse = JwtResponse.fromJson(jsonDecode(response.body));
+      await _saveTokens(jwtResponse);
       return jwtResponse;
     } else {
       throw Exception('Error al iniciar sesión: ${response.body}');
@@ -63,43 +30,53 @@ class ApiService {
   Future<JwtResponse> register(RegisterRequest request) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/register'),
-      headers: _headers,
-      body: json.encode(request.toJson()),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(request.toJson()),
     );
 
     if (response.statusCode == 200) {
-      final jwtResponse = JwtResponse.fromJson(json.decode(response.body));
-      await saveToken(jwtResponse.token);
+      final jwtResponse = JwtResponse.fromJson(jsonDecode(response.body));
+      await _saveTokens(jwtResponse);
       return jwtResponse;
     } else {
       throw Exception('Error al registrar: ${response.body}');
     }
   }
 
-  Future<JwtResponse> refreshToken() async {
-    final token = await getToken();
-    if (token == null) {
-      throw Exception('No hay token para refrescar');
-    }
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(tokenKey);
+    await prefs.remove(refreshTokenKey);
+  }
 
+  Future<JwtResponse> refreshToken() async {
+    final token = await _getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/auth/refresh-token'),
-      headers: _headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
-      final jwtResponse = JwtResponse.fromJson(json.decode(response.body));
-      await saveToken(jwtResponse.token);
+      final jwtResponse = JwtResponse.fromJson(jsonDecode(response.body));
+      await _saveTokens(jwtResponse);
       return jwtResponse;
     } else {
-      throw Exception('Error al refrescar token: ${response.body}');
+      throw Exception('Error al actualizar el token: ${response.body}');
     }
   }
 
+  // Métodos de usuario
   Future<User> getUserProfile() async {
+    final token = await _getToken();
     final response = await http.get(
-      Uri.parse('$baseUrl/user/me'),
-      headers: _headers,
+      Uri.parse('$baseUrl/users/profile'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
@@ -110,9 +87,13 @@ class ApiService {
   }
 
   Future<User> updateUserProfile(User user) async {
+    final token = await _getToken();
     final response = await http.put(
-      Uri.parse('$baseUrl/user/me'),
-      headers: _headers,
+      Uri.parse('$baseUrl/users/profile'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
       body: jsonEncode(user.toJson()),
     );
 
@@ -123,119 +104,76 @@ class ApiService {
     }
   }
 
-  Future<List<UserDTO>> getAllUsers({int page = 0, int size = 20}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/users?page=$page&size=$size'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['content'] as List)
-          .map((user) => UserDTO.fromJson(user))
-          .toList();
-    } else {
-      throw Exception('Error al obtener usuarios: ${response.body}');
-    }
-  }
-
-  Future<void> updateUserRoles(Long userId, Set<UserRole> roles) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/users/$userId/roles'),
-      headers: _headers,
-      body: json.encode(roles.map((r) => r.toString().split('.').last).toList()),
-    );
-
-    if (response.statusCode != 204) {
-      throw Exception('Error al actualizar roles: ${response.body}');
-    }
-  }
-
-  Future<List<Request>> getRequests() async {
+  // Métodos de solicitudes
+  Future<List<HelpRequest>> getRequests() async {
+    final token = await _getToken();
     final response = await http.get(
       Uri.parse('$baseUrl/requests'),
-      headers: _headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Request.fromJson(json)).toList();
+      final List<dynamic> jsonList = jsonDecode(response.body);
+      return jsonList.map((json) => HelpRequest.fromJson(json)).toList();
     } else {
       throw Exception('Error al obtener las solicitudes: ${response.body}');
     }
   }
 
-  Future<Request> createRequest(Request request) async {
+  Future<HelpRequest> createRequest(HelpRequest request) async {
+    final token = await _getToken();
     final response = await http.post(
       Uri.parse('$baseUrl/requests'),
-      headers: _headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
       body: jsonEncode(request.toJson()),
     );
 
     if (response.statusCode == 201) {
-      return Request.fromJson(jsonDecode(response.body));
+      return HelpRequest.fromJson(jsonDecode(response.body));
     } else {
       throw Exception('Error al crear la solicitud: ${response.body}');
     }
   }
 
-  Future<Request> acceptRequest(int requestId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/requests/$requestId/accept'),
-      headers: _headers,
+  Future<HelpRequest> updateRequest(HelpRequest request) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('$baseUrl/requests/${request.id}'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(request.toJson()),
     );
 
     if (response.statusCode == 200) {
-      return Request.fromJson(jsonDecode(response.body));
+      return HelpRequest.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Error al aceptar la solicitud: ${response.body}');
+      throw Exception('Error al actualizar la solicitud: ${response.body}');
     }
   }
 
-  Future<Request> completeRequest(int requestId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/requests/$requestId/complete'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return Request.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Error al completar la solicitud: ${response.body}');
+  // Métodos auxiliares
+  Future<void> _saveTokens(JwtResponse jwtResponse) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tokenKey, jwtResponse.accessToken);
+    if (jwtResponse.refreshToken != null) {
+      await prefs.setString(refreshTokenKey, jwtResponse.refreshToken!);
     }
   }
 
-  Future<Request> cancelRequest(int requestId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/requests/$requestId/cancel'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return Request.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Error al cancelar la solicitud: ${response.body}');
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(tokenKey);
+    if (token == null) {
+      throw Exception('No hay token disponible');
     }
-  }
-
-  Future<Map<String, dynamic>> getTravelTime(
-    double fromLat,
-    double fromLon,
-    double toLat,
-    double toLon,
-    String mode,
-  ) async {
-    final response = await http.get(
-      Uri.parse(
-        '$baseUrl/integration/travel-time?fromLat=$fromLat&fromLon=$fromLon&toLat=$toLat&toLon=$toLon&mode=$mode',
-      ),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Error al obtener el tiempo de viaje: ${response.body}');
-    }
+    return token;
   }
 } 

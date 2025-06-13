@@ -1,35 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:provider/provider.dart';
-import 'package:frontend/models/request_model.dart';
-import 'package:frontend/models/user_model.dart';
-import 'package:frontend/services/api_service.dart';
-import 'package:frontend/services/auth_service.dart';
-
-class RequestsProvider extends ChangeNotifier {
-  final ApiService apiService;
-  List<HelpRequest> requests = [];
-  bool isLoading = false;
-  String? error;
-
-  RequestsProvider(this.apiService);
-
-  Future<void> fetchRequests() async {
-    isLoading = true;
-    error = null;
-    notifyListeners();
-    try {
-      final result = await apiService.getRequests();
-      requests = result;
-    } catch (e) {
-      error = e.toString();
-    }
-    isLoading = false;
-    notifyListeners();
-  }
-}
+import 'package:geolocator/geolocator.dart';
+import '../providers/requests_provider.dart';
+import '../models/user_profile_dto.dart';
+import '../services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,173 +16,127 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final MapController _mapController = MapController();
-  Timer? _timer;
+  final AuthService _authService = AuthService();
+  LatLng? _currentPosition;
+  UserProfileDTO? _userProfile;
 
   @override
   void initState() {
     super.initState();
-    final provider = Provider.of<RequestsProvider>(context, listen: false);
-    provider.fetchRequests();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      provider.fetchRequests();
-    });
+    _loadRequests();
+    _getCurrentPosition();
+    _loadUserProfile();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  Future<void> _loadRequests() async {
+    await context.read<RequestsProvider>().loadRequests();
   }
 
-  Future<void> _onRefresh() async {
-    await Provider.of<RequestsProvider>(context, listen: false).fetchRequests();
+  Future<void> _getCurrentPosition() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requestPermission = await Geolocator.requestPermission();
+        if (requestPermission == LocationPermission.denied) {
+          return;
+        }
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        setState(() {
+          _currentPosition = LatLng(position.latitude, position.longitude);
+        });
+      }
+    } catch (e) {
+      // Manejar el error de ubicación
+    }
   }
 
-  void _showRequestDetails(BuildContext context, HelpRequest request) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => _RequestDetailsSheet(request: request),
-    );
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await _authService.getUserProfile();
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+        });
+      }
+    } catch (e) {
+      // Manejar el error de carga del perfil
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => RequestsProvider(Provider.of<ApiService>(context, listen: false)),
-      child: Consumer2<RequestsProvider, AuthService>(
-        builder: (context, reqProvider, authService, _) {
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Solicitudes Cercanas'),
-              backgroundColor: const Color(0xFF1EB980),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Solicitudes de Ayuda'),
+        actions: [
+          if (_userProfile != null)
+            CircleAvatar(
+              backgroundImage: _userProfile!.profilePicture != null
+                  ? NetworkImage(_userProfile!.profilePicture!)
+                  : null,
+              child: _userProfile!.profilePicture == null
+                  ? Text(_userProfile!.name[0].toUpperCase())
+                  : null,
             ),
-            drawer: _AppDrawer(authService: authService),
-            body: reqProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _onRefresh,
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: const LatLng(-34.6037, -58.3816), // Buenos Aires por defecto
-                        initialZoom: 13,
-                        onTap: (_, point) {
-                          // Manejar tap en el mapa si es necesario
-                        },
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.community_help',
-                        ),
-                        MarkerLayer(
-                          markers: reqProvider.requests.map((req) {
-                            return Marker(
-                              point: LatLng(req.latitude, req.longitude),
-                              width: 40,
-                              height: 40,
-                              child: GestureDetector(
-                                onTap: () => _showRequestDetails(context, req),
-                                child: Icon(
-                                  Icons.location_on,
-                                  color: req.status == 'OPEN' ? Colors.green : Colors.red,
-                                  size: 40,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-            floatingActionButton: FloatingActionButton(
-              backgroundColor: const Color(0xFF1EB980),
-              child: const Icon(Icons.add),
-              onPressed: () {
-                // Aquí deberías abrir la pantalla para crear una nueva solicitud
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _RequestDetailsSheet extends StatelessWidget {
-  final HelpRequest request;
-  const _RequestDetailsSheet({required this.request});
-  
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            request.title,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            request.description,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.location_on, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '${request.latitude.toStringAsFixed(6)}, ${request.longitude.toStringAsFixed(6)}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
           ),
         ],
       ),
-    );
-  }
-}
+      body: Consumer<RequestsProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-class _AppDrawer extends StatelessWidget {
-  final AuthService authService;
-  const _AppDrawer({required this.authService});
+          if (provider.error != null) {
+            return Center(child: Text('Error: ${provider.error}'));
+          }
 
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: FutureBuilder<UserProfileDTO?>(
-        future: authService.getUserProfile(),
-        builder: (context, snapshot) {
-          final user = snapshot.data;
-          return ListView(
-            padding: EdgeInsets.zero,
+          if (_currentPosition == null) {
+            return const Center(child: Text('Obteniendo ubicación...'));
+          }
+
+          return FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _currentPosition!,
+              initialZoom: 13.0,
+            ),
             children: [
-              UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(color: Color(0xFF1EB980)),
-                accountName: Text(user?.name ?? ''),
-                accountEmail: Text(user?.email ?? ''),
-                currentAccountPicture: const CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, color: Color(0xFF1EB980)),
-                ),
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.community_help',
               ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Color(0xFFFF6859)),
-                title: const Text('Cerrar sesión'),
-                onTap: () async {
-                  await authService.logout();
-                  if (context.mounted) {
-                    Navigator.pushReplacementNamed(context, '/login');
-                  }
-                },
+              MarkerLayer(
+                markers: provider.requests.map((req) {
+                  return Marker(
+                    point: LatLng(req.latitude, req.longitude),
+                    width: 40,
+                    height: 40,
+                    child: Icon(
+                      Icons.location_on,
+                      color: req.status == 'OPEN' ? Colors.red : Colors.green,
+                      size: 40,
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/create-request');
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:frontend/models/user_model.dart';
+import 'package:community_help/models/user_model.dart';
 
 class LoginRequest {
   final String email;

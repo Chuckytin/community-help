@@ -1,129 +1,123 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences.dart';
-import '../models/user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/auth_models.dart';
+import '../models/user_profile_dto.dart';
 
 class AuthService {
-  final String baseUrl;
-  String? _token;
-  final _storage = SharedPreferences.getInstance();
+  final String baseUrl = 'http://localhost:8080/api';
+  final http.Client _client = http.Client();
 
-  AuthService() : baseUrl = dotenv.env['API_URL'] ?? 'https://community-help-d87d.onrender.com';
+  Future<UserProfileDTO> getUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    
+    if (token == null) {
+      throw Exception('No hay token de autenticación');
+    }
 
-  Future<String?> getToken() async {
-    final prefs = await _storage;
-    return prefs.getString('token');
-  }
-
-  Future<void> saveToken(String token) async {
-    final prefs = await _storage;
-    await prefs.setString('token', token);
-    _token = token;
-  }
-
-  Future<void> deleteToken() async {
-    final prefs = await _storage;
-    await prefs.remove('token');
-    _token = null;
-  }
-
-  Map<String, String> get _headers {
-    return {
-      'Content-Type': 'application/json',
-      if (_token != null) 'Authorization': 'Bearer $_token',
-    };
-  }
-
-  Future<String> loginWithGoogle(String idToken) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/google'),
-      headers: _headers,
-      body: jsonEncode({'idToken': idToken}),
+    final response = await _client.get(
+      Uri.parse('$baseUrl/auth/profile'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await saveToken(data['token']);
-      return data['token'];
+      return UserProfileDTO.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Error en el login con Google: ${response.body}');
+      throw Exception('Error al obtener el perfil del usuario');
     }
   }
 
-  Future<String> login(String email, String password) async {
-    final response = await http.post(
+  Future<JwtResponse> login(LoginRequest request) async {
+    final response = await _client.post(
       Uri.parse('$baseUrl/auth/login'),
-      headers: _headers,
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(request.toJson()),
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await saveToken(data['token']);
-      return data['token'];
+      final jwtResponse = JwtResponse.fromJson(jsonDecode(response.body));
+      await _saveTokens(jwtResponse);
+      return jwtResponse;
     } else {
-      throw Exception('Error en el login: ${response.body}');
+      throw Exception('Error en el inicio de sesión');
     }
   }
 
-  Future<String> register(String name, String email, String password) async {
-    final response = await http.post(
+  Future<JwtResponse> register(RegisterRequest request) async {
+    final response = await _client.post(
       Uri.parse('$baseUrl/auth/register'),
-      headers: _headers,
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-      }),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(request.toJson()),
     );
 
     if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      await saveToken(data['token']);
-      return data['token'];
+      final jwtResponse = JwtResponse.fromJson(jsonDecode(response.body));
+      await _saveTokens(jwtResponse);
+      return jwtResponse;
     } else {
-      throw Exception('Error en el registro: ${response.body}');
+      throw Exception('Error en el registro');
     }
   }
 
   Future<void> logout() async {
-    await deleteToken();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('refreshToken');
   }
 
-  Future<bool> isAuthenticated() async {
-    final token = await getToken();
-    if (token == null) return false;
+  Future<JwtResponse> refreshToken() async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/refresh-token'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
+    if (response.statusCode == 200) {
+      final jwtResponse = JwtResponse.fromJson(jsonDecode(response.body));
+      await _saveTokens(jwtResponse);
+      return jwtResponse;
+    } else {
+      throw Exception('Error al actualizar el token: ${response.body}');
+    }
+  }
+
+  // Métodos auxiliares
+  Future<void> _saveTokens(JwtResponse jwtResponse) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', jwtResponse.accessToken);
+    if (jwtResponse.refreshToken != null) {
+      await prefs.setString('refreshToken', jwtResponse.refreshToken!);
+    }
+  }
+
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) {
+      throw Exception('No hay token disponible');
+    }
+    return token;
+  }
+
+  Future<bool> isTokenValid() async {
     try {
+      final token = await _getToken();
       final response = await http.get(
-        Uri.parse('$baseUrl/auth/validate'),
-        headers: _headers,
+        Uri.parse('$baseUrl/auth/health'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
       return response.statusCode == 200;
     } catch (e) {
       return false;
-    }
-  }
-
-  Future<String> refreshToken() async {
-    final token = await getToken();
-    if (token == null) throw Exception('No hay token para refrescar');
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/refresh-token'),
-      headers: _headers,
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await saveToken(data['token']);
-      return data['token'];
-    } else {
-      throw Exception('Error al refrescar el token: ${response.body}');
     }
   }
 } 

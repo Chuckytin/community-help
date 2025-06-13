@@ -28,11 +28,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _submitForm() async {
     if (_formKey.currentState?.saveAndValidate() ?? false) {
       final formData = _formKey.currentState!.value;
-      final user = User(
+      final user = UserProfileDTO(
         id: context.read<AppState>().currentUser!.id,
         name: formData['name'],
         email: formData['email'],
+        roles: context.read<AppState>().currentUser!.roles,
         phone: formData['phone'],
+        address: context.read<AppState>().currentUser!.address,
+        createdAt: context.read<AppState>().currentUser!.createdAt,
+        updatedAt: DateTime.now(),
       );
 
       await context.read<AppState>().updateUserProfile(user);

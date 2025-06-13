@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:form_builder_validators/form_builder_validators.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
-import '../services/api_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/request.dart';
+import '../providers/requests_provider.dart';
 
 class CreateRequestScreen extends StatefulWidget {
   const CreateRequestScreen({super.key});
@@ -16,70 +12,93 @@ class CreateRequestScreen extends StatefulWidget {
 }
 
 class _CreateRequestScreenState extends State<CreateRequestScreen> {
-  final _formKey = GlobalKey<FormBuilderState>();
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
   bool _isLoading = false;
-  LatLng? _selectedLocation;
-  final MapController _mapController = MapController();
+  String? _error;
+  Position? _currentPosition;
 
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
+    _getCurrentPosition();
   }
 
-  Future<void> _getCurrentLocation() async {
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _getCurrentPosition() async {
     try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requestPermission = await Geolocator.requestPermission();
+        if (requestPermission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              _error = 'Se requiere permiso de ubicación';
+            });
+          }
+          return;
+        }
+      }
+
       final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _selectedLocation = LatLng(position.latitude, position.longitude);
-      });
-      _mapController.move(_selectedLocation!, 15);
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al obtener la ubicación actual')),
-      );
+      if (mounted) {
+        setState(() {
+          _error = 'Error al obtener la ubicación: $e';
+        });
+      }
     }
   }
 
-  Future<void> _submitForm() async {
-    if (_formKey.currentState?.saveAndValidate() ?? false) {
-      if (_selectedLocation == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Por favor selecciona una ubicación')),
-        );
-        return;
+  Future<void> _submitRequest() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_currentPosition == null) {
+      setState(() {
+        _error = 'No se pudo obtener la ubicación';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final request = HelpRequest(
+        title: _titleController.text,
+        description: _descriptionController.text,
+        latitude: _currentPosition!.latitude,
+        longitude: _currentPosition!.longitude,
+      );
+
+      await context.read<RequestsProvider>().createRequest(request);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
       }
-
-      setState(() => _isLoading = true);
-
-      try {
-        final formData = _formKey.currentState!.value;
-        final request = Request(
-          title: formData['title'],
-          description: formData['description'],
-          latitude: _selectedLocation!.latitude,
-          longitude: _selectedLocation!.longitude,
-        );
-
-        final apiService = Provider.of<ApiService>(context, listen: false);
-        await apiService.createRequest(request);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Solicitud creada exitosamente')),
-          );
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al crear la solicitud: $e')),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -88,129 +107,60 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crear Solicitud'),
-        backgroundColor: const Color(0xFF1EB980),
+        title: const Text('Nueva Solicitud'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            FormBuilder(
-              key: _formKey,
-              child: Column(
-                children: [
-                  FormBuilderTextField(
-                    name: 'title',
-                    decoration: const InputDecoration(
-                      labelText: 'Título',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: FormBuilderValidators.required(
-                      errorText: 'Por favor ingresa un título',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FormBuilderTextField(
-                    name: 'description',
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Descripción',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: FormBuilderValidators.required(
-                      errorText: 'Por favor ingresa una descripción',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FormBuilderTextField(
-                          name: 'location',
-                          readOnly: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Ubicación',
-                            border: OutlineInputBorder(),
-                          ),
-                          initialValue: _selectedLocation != null
-                              ? '${_selectedLocation!.latitude.toStringAsFixed(6)}, ${_selectedLocation!.longitude.toStringAsFixed(6)}'
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: _getCurrentLocation,
-                        icon: const Icon(Icons.my_location),
-                        tooltip: 'Usar ubicación actual',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (_selectedLocation != null)
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Título',
+                  border: OutlineInputBorder(),
                 ),
-                child: SizedBox(
-                  height: 200,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _selectedLocation!,
-                        initialZoom: 15,
-                        onTap: (_, point) {
-                          setState(() {
-                            _selectedLocation = point;
-                            _formKey.currentState?.fields['location']?.didChange(
-                              '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}',
-                            );
-                          });
-                        },
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.community_help',
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: _selectedLocation!,
-                              width: 40,
-                              height: 40,
-                              child: const Icon(
-                                Icons.location_on,
-                                color: Colors.red,
-                                size: 40,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor ingrese un título';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción',
+                  border: OutlineInputBorder(),
                 ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor ingrese una descripción';
+                  }
+                  return null;
+                },
               ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _submitForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1EB980),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _submitRequest,
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('Crear Solicitud'),
               ),
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Crear Solicitud'),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
