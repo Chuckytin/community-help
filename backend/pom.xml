@@ -106,6 +106,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
+		<!-- Integración Thymeleaf con Spring Security -->
+		<dependency>
+			<groupId>org.thymeleaf.extras</groupId>
+			<artifactId>thymeleaf-extras-springsecurity6</artifactId>
+			<version>3.1.3.RELEASE</version>
+		</dependency>
 		<!-- Bootstrap -->
 		<dependency>
 			<groupId>org.webjars</groupId>
