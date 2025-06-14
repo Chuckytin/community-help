@@ -5,10 +5,15 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import org.locationtech.jts.geom.Point;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +47,10 @@ public class User implements UserDetails {
     @Column(name = "phone_number") //TODO: Fuera de pruebas añadir unique = true
     private String phoneNumber;
 
+    @Column(columnDefinition = "geography(Point,4326)")
+    @JdbcTypeCode(SqlTypes.GEOGRAPHY)
+    private Point location;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
@@ -74,6 +83,19 @@ public class User implements UserDetails {
         this.email = email;
         this.name = name;
         this.password = password;
+    }
+
+    public void setLocationFromLatLon(double latitude, double longitude) {
+        this.location = new GeometryFactory().createPoint(new Coordinate(longitude, latitude));
+        this.location.setSRID(4326);
+    }
+
+    public Double getLatitude() {
+        return (location != null) ? location.getY() : null;
+    }
+
+    public Double getLongitude() {
+        return (location != null) ? location.getX() : null;
     }
 
     /**

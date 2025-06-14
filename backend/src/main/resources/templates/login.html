@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - Ayuda Comunitaria</title>
+  <!-- Bootstrap CSS (via WebJars) -->
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.0/css/bootstrap.min.css}"/>
+  <style>
+    .login-container {
+        max-width: 400px;
+        margin: 100px auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="login-container">
+    <h2 class="text-center mb-4">Iniciar Sesión</h2>
+
+    <!-- Botón de Google OAuth2 -->
+    <div class="d-grid gap-2">
+      <a th:href="@{/oauth2/authorization/google}" class="btn btn-danger">
+        <i class="bi bi-google"></i> Iniciar con Google
+      </a>
+    </div>
+
+    <!-- Separador -->
+    <hr class="my-4">
+
+    <!-- Formulario tradicional (si usas JWT local) -->
+    <form th:action="@{/api/auth/login}" method="post" th:unless="${#request.userPrincipal}">
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+    </form>
+
+    <!-- Mensajes de error -->
+    <div th:if="${param.error}" class="alert alert-danger mt-3">
+      Credenciales inválidas. Intenta nuevamente.
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script th:src="@{/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

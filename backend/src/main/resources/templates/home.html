@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inicio - Ayuda Comunitaria</title>
+    <!-- Bootstrap CSS (WebJars) -->
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.0/css/bootstrap.min.css}"/>
+    <!-- Leaflet CSS (Mapas) -->
+    <link rel="stylesheet" th:href="@{/webjars/leaflet/1.9.4/dist/leaflet.css}"/>
+    <!-- Font Awesome (Iconos) -->
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.4.0/css/all.min.css}"/>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .user-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #map {
+            height: 400px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+<!-- Barra de navegación -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="#">Ayuda Comunitaria</a>
+        <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    Hola, <span th:text="${user.name}">Usuario</span>!
+                </span>
+            <a class="btn btn-outline-light" th:href="@{/logout}">
+                <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Contenido principal -->
+<div class="container py-4">
+    <div class="row">
+        <!-- Tarjeta de usuario -->
+        <div class="col-md-4 mb-4">
+            <div class="card user-card">
+                <div class="card-body text-center">
+                    <img th:if="${user.provider == 'google'}"
+                         th:src="${user.attributes['picture']}"
+                         class="rounded-circle mb-3" width="100" alt="Foto perfil">
+                    <h5 th:text="${user.name}">Nombre Usuario</h5>
+                    <p class="text-muted" th:text="${user.email}">email@ejemplo.com</p>
+                    <a href="/request/new" class="btn btn-primary w-100 mb-2">
+                        <i class="fas fa-plus"></i> Crear solicitud
+                    </a>
+                    <a href="/requests" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-list"></i> Ver mis solicitudes
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mapa y solicitudes cercanas -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Solicitudes cercanas</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script th:src="@{/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/webjars/leaflet/1.9.4/dist/leaflet.js}"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    // Manejo del token desde URL
+    (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        if (token) {
+            localStorage.setItem('jwt_token', token);
+            // Limpiar la URL sin recargar
+            window.history.replaceState({}, '', '/home');
+        }
+        
+        // Verificar autenticación
+        if (!localStorage.getItem('jwt_token') && ![[${#request.userPrincipal}]] ) {
+            window.location.href = '/login';
+            return;
+        }
+    })();
+    /*]]>*/
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (token) {
+        // Guardar el token en localStorage (o usarlo directamente)
+        localStorage.setItem('jwt_token', token);
+        // Limpiar la URL
+        window.history.replaceState({}, document.title, "/home");
+    }
+
+    // Coordenadas por defecto (Madrid)
+    const defaultLat = 40.4168;
+    const defaultLon = -3.7038;
+
+    // Obtener ubicación del usuario
+    const userLat = [[${user.latitude}]] || defaultLat;
+    const userLon = [[${user.longitude}]] || defaultLon;
+
+    // Inicializar mapa centrado en usuario o ubicación por defecto
+    const map = L.map('map').setView([userLat, userLon], userLat !== defaultLat ? 13 : 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Marcador del usuario
+    if ([[${user.latitude}]] && [[${user.longitude}]]) {
+        L.marker([userLat, userLon])
+            .bindPopup("<b>Tu ubicación</b>")
+            .addTo(map);
+    }
+
+    // Añadir solicitudes cercanas
+    const solicitudes = [[${requests}]];
+    if (solicitudes) {
+        solicitudes.forEach(sol => {
+            // Usar location.y (latitud) y location.x (longitud) de Point
+            L.marker([sol.location.y, sol.location.x])
+                .bindPopup(`
+                    <b>${sol.title}</b><br>
+                    <small>${sol.category}</small><br>
+                    <span>Distancia: ${(sol.distance / 1000).toFixed(2)} km</span>
+                `)
+                .addTo(map);
+        });
+    }
+</script>
+</body>
+</html>
