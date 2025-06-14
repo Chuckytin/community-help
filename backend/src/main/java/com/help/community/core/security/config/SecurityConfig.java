@@ -15,6 +15,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
@@ -37,14 +38,6 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins}")
     private String[] allowedOrigins;
 
-    /**
-     * Configura la cadena de filtros de seguridad.
-     *
-     * - Desactiva CSRF
-     * - Permite acceso público a rutas específicas.
-     * - Habilita login OAuth2 con userService y successHandler personalizados.
-     * - Añade el filtro JWT antes del filtro de autenticación por usuario/contraseña.
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -66,37 +59,29 @@ public class SecurityConfig {
                         )
                         .successHandler(oauth2SuccessHandler)
                 )
+                .addFilterBefore(corsFilter(), UsernamePasswordAuthenticationFilter.class) // Añade el CorsFilter primero
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Provee el AuthenticationManager para autenticaciones personalizadas.
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * Configura un filtro CORS que permite solicitudes desde cualquier origen.
-     * Útil para desarrollo, pero se recomienda restringirlo en producción.
-     */
+    // Configuración CORS única y centralizada
     @Bean
     public CorsFilter corsFilter() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
-
-        // Configuración segura para producción
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        config.setAllowedOrigins(Arrays.asList(allowedOrigins)); // Usa los dominios de tu properties
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
 
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
-
 }
