@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=18.x <=20.x",
-    "npm": ">=9.x"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
@@ -17,7 +17,7 @@
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.18.0",
-    "react-scripts": "^0.0.0",
+    "react-scripts": "5.0.1",
     "typescript": "4.9.5",
     "web-vitals": "^3.3.2"
   },
@@ -46,8 +46,9 @@
     ]
   },
   "devDependencies": {
-    "@testing-library/react": "^16.3.0",
+    "@testing-library/react": "^13.4.0",
     "@types/leaflet": "^1.9.18",
-    "@types/testing-library__react": "^10.2.0"
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18"
   }
 }
