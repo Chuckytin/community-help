@@ -33,7 +33,7 @@
     <hr class="my-4">
 
     <!-- Formulario tradicional (si usas JWT local) -->
-    <form th:action="@{/api/auth/login}" method="post" th:unless="${#request.userPrincipal}">
+    <form th:action="@{/api/auth/login}" method="post" th:unless="${#authentication.principal != 'anonymousUser'}">
       <div class="mb-3">
         <label for="email" class="form-label">Email</label>
         <input type="email" class="form-control" id="email" name="email" required>
