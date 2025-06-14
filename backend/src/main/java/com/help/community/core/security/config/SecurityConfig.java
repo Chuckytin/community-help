@@ -59,14 +59,21 @@ public class SecurityConfig {
                 }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/", "/login", "/home",
-                                "/webjars/**", "/css/**",
-                                "/api/health", "/api/auth/**"
+                                "/",
+                                "/login",
+                                "/home",
+                                "/webjars/**",
+                                "/css/**",
+                                "/api/health",
+                                "/api/auth/**",
+                                "/oauth2/**",
+                                "/login/oauth2/code/google"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/login")
+                        .defaultSuccessUrl("/home", true)
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
@@ -76,6 +83,11 @@ public class SecurityConfig {
                         .loginPage("/login")
                         .loginProcessingUrl("/api/auth/login")
                         .defaultSuccessUrl("/home", true)
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

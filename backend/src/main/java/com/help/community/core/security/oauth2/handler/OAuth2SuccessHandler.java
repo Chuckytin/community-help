@@ -34,6 +34,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         authCookie.setHttpOnly(true);
         authCookie.setSecure(true);
         authCookie.setPath("/");
+        authCookie.setMaxAge(86400); //24 horas
         response.addCookie(authCookie);
 
         response.sendRedirect("/home");
