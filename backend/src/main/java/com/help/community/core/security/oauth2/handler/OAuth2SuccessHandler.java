@@ -27,6 +27,24 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                                         Authentication authentication) throws IOException {
         CustomOAuth2User oauthUser = (CustomOAuth2User) authentication.getPrincipal();
         String jwtToken = jwtService.generateToken(oauthUser);
-        response.sendRedirect("communityhelp://oauth2/callback?token=" + jwtToken);
+
+        // Redirigir a una página HTML que redirigirá a la app
+        String htmlResponse = String.format("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Redireccionando...</title>
+                <script>
+                    window.location.href = "communityhelp://oauth2/callback?token=%s";
+                </script>
+            </head>
+            <body>
+                <p>Redireccionando a la aplicación...</p>
+            </body>
+            </html>
+            """, jwtToken);
+
+        response.setContentType("text/html");
+        response.getWriter().write(htmlResponse);
     }
 }
