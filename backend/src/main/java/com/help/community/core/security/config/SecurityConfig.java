@@ -1,5 +1,6 @@
 package com.help.community.core.security.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import com.help.community.core.security.oauth2.service.CustomOAuth2UserService;
 import com.help.community.core.security.oauth2.handler.OAuth2SuccessHandler;
 import com.help.community.core.security.web.JwtAuthenticationFilter;
