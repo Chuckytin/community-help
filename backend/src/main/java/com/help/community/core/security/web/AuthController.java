@@ -71,7 +71,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.refreshToken(authHeader.substring(7)));
     }
 
-    @GetMapping(value = "/health", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/health")
     public Map<String, String> healthCheck() {
         Map<String, String> response = new LinkedHashMap<>();
         response.put("status", "OK");

@@ -27,6 +27,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                                         Authentication authentication) throws IOException {
         CustomOAuth2User oauthUser = (CustomOAuth2User) authentication.getPrincipal();
         String jwtToken = jwtService.generateToken(oauthUser);
-        response.sendRedirect("/api/oauth2/success?token=" + jwtToken);
+        response.sendRedirect("communityhelp://oauth2/callback?token=" + jwtToken);
     }
 }
