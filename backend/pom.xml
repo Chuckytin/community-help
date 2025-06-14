@@ -12,7 +12,7 @@
 
 	<groupId>com.help</groupId>
 	<artifactId>backend</artifactId>
-	<version>0.7.0</version>
+	<version>0.7.1</version>
 	<name>CommunityHelp</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
@@ -100,6 +100,23 @@
 			<groupId>com.twilio.sdk</groupId>
 			<artifactId>twilio</artifactId>
 			<version>10.9.1</version>
+		</dependency>
+		<!-- Thymeleaf -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<!-- Bootstrap -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>bootstrap</artifactId>
+			<version>5.3.6</version>
+		</dependency>
+		<!-- Leaflet -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>leaflet</artifactId>
+			<version>1.9.4</version>
 		</dependency>
 		<!-- lombok - reduce código boilerplate -->
 		<dependency>
