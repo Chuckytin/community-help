@@ -9,7 +9,7 @@
   <!-- Font Awesome para iconos -->
   <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
   <style>
-    .login-container {
+    .auth-container {
         max-width: 400px;
         margin: 100px auto;
         padding: 20px;
@@ -25,47 +25,104 @@
         background-color: #3b7ddd;
         border-color: #3b7ddd;
     }
+    .auth-tabs .nav-link {
+        color: #495057;
+    }
+    .auth-tabs .nav-link.active {
+        color: #3b7ddd;
+        font-weight: bold;
+    }
   </style>
 </head>
 <body>
 <div class="container">
-  <div class="login-container">
-    <h2 class="text-center mb-4">Iniciar Sesión</h2>
+  <div class="auth-container">
+    <ul class="nav nav-tabs auth-tabs mb-4" id="authTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Iniciar Sesión</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">Registrarse</button>
+      </li>
+    </ul>
 
-    <!-- Botón de Google OAuth2 -->
-    <div class="d-grid gap-2 mb-3">
-      <a th:href="@{/oauth2/authorization/google}" class="btn btn-danger">
-        <i class="fab fa-google me-2"></i> Continuar con Google
-      </a>
-    </div>
+    <div class="tab-content" id="authTabsContent">
+      <!-- Pestaña de Login -->
+      <div class="tab-pane fade show active" id="login" role="tabpanel">
+        <!-- Botón de Google OAuth2 -->
+        <div class="d-grid gap-2 mb-3">
+          <a th:href="@{/oauth2/authorization/google}" class="btn btn-danger">
+            <i class="fab fa-google me-2"></i> Continuar con Google
+          </a>
+        </div>
 
-    <!-- Separador -->
-    <div class="d-flex align-items-center mb-3">
-      <hr class="flex-grow-1">
-      <span class="mx-3 text-muted">o</span>
-      <hr class="flex-grow-1">
-    </div>
+        <!-- Separador -->
+        <div class="d-flex align-items-center mb-3">
+          <hr class="flex-grow-1">
+          <span class="mx-3 text-muted">o</span>
+          <hr class="flex-grow-1">
+        </div>
 
-    <!-- Formulario tradicional -->
-    <form id="loginForm" novalidate>
-      <div class="mb-3">
-        <label for="email" class="form-label">Correo electrónico</label>
-        <input type="email" class="form-control" id="email" required>
-        <div class="invalid-feedback">Por favor ingresa un correo válido</div>
+        <!-- Formulario de login -->
+        <form id="loginForm" novalidate>
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo electrónico</label>
+            <input type="email" class="form-control" id="email" required>
+            <div class="invalid-feedback">Por favor ingresa un correo válido</div>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" class="form-control" id="password" required>
+            <div class="invalid-feedback">Por favor ingresa tu contraseña</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mb-3" id="loginBtn">
+            <span id="loginText">Ingresar</span>
+            <span id="loginSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          </button>
+
+          <!-- Mensaje de error -->
+          <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
+        </form>
       </div>
-      <div class="mb-3">
-        <label for="password" class="form-label">Contraseña</label>
-        <input type="password" class="form-control" id="password" required>
-        <div class="invalid-feedback">Por favor ingresa tu contraseña</div>
-      </div>
-      <button type="submit" class="btn btn-primary w-100 mb-3" id="submitBtn">
-        <span id="submitText">Ingresar</span>
-        <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-      </button>
 
-      <!-- Mensaje de error -->
-      <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
-    </form>
+      <!-- Pestaña de Registro -->
+      <div class="tab-pane fade" id="register" role="tabpanel">
+        <form id="registerForm" novalidate>
+          <div class="mb-3">
+            <label for="regName" class="form-label">Nombre completo</label>
+            <input type="text" class="form-control" id="regName" required minlength="3" maxlength="50">
+            <div class="invalid-feedback">Por favor ingresa tu nombre (3-50 caracteres)</div>
+          </div>
+          <div class="mb-3">
+            <label for="regEmail" class="form-label">Correo electrónico</label>
+            <input type="email" class="form-control" id="regEmail" required>
+            <div class="invalid-feedback">Por favor ingresa un correo válido</div>
+          </div>
+          <div class="mb-3">
+            <label for="regPhone" class="form-label">Teléfono (opcional)</label>
+            <input type="tel" class="form-control" id="regPhone" minlength="9">
+            <div class="invalid-feedback">Por favor ingresa un teléfono válido (mínimo 9 dígitos)</div>
+          </div>
+          <div class="mb-3">
+            <label for="regPassword" class="form-label">Contraseña</label>
+            <input type="password" class="form-control" id="regPassword" required minlength="8">
+            <div class="invalid-feedback">La contraseña debe tener al menos 8 caracteres</div>
+          </div>
+          <div class="mb-3">
+            <label for="regConfirmPassword" class="form-label">Confirmar contraseña</label>
+            <input type="password" class="form-control" id="regConfirmPassword" required>
+            <div class="invalid-feedback">Las contraseñas no coinciden</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mb-3" id="registerBtn">
+            <span id="registerText">Registrarse</span>
+            <span id="registerSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          </button>
+
+          <!-- Mensaje de error/éxito -->
+          <div id="registerMessage" class="alert d-none mt-3"></div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -73,18 +130,42 @@
 <script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Elementos del formulario de login
     const loginForm = document.getElementById('loginForm');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
-    const submitBtn = document.getElementById('submitBtn');
-    const submitText = document.getElementById('submitText');
-    const submitSpinner = document.getElementById('submitSpinner');
-    const errorDiv = document.getElementById('loginError');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginText = document.getElementById('loginText');
+    const loginSpinner = document.getElementById('loginSpinner');
+    const loginError = document.getElementById('loginError');
 
+    // Elementos del formulario de registro
+    const registerForm = document.getElementById('registerForm');
+    const regNameInput = document.getElementById('regName');
+    const regEmailInput = document.getElementById('regEmail');
+    const regPhoneInput = document.getElementById('regPhone');
+    const regPasswordInput = document.getElementById('regPassword');
+    const regConfirmPasswordInput = document.getElementById('regConfirmPassword');
+    const registerBtn = document.getElementById('registerBtn');
+    const registerText = document.getElementById('registerText');
+    const registerSpinner = document.getElementById('registerSpinner');
+    const registerMessage = document.getElementById('registerMessage');
+
+    // Validación de confirmación de contraseña
+    regConfirmPasswordInput.addEventListener('input', function() {
+      if (regPasswordInput.value !== regConfirmPasswordInput.value) {
+        regConfirmPasswordInput.setCustomValidity("Las contraseñas no coinciden");
+        regConfirmPasswordInput.classList.add('is-invalid');
+      } else {
+        regConfirmPasswordInput.setCustomValidity("");
+        regConfirmPasswordInput.classList.remove('is-invalid');
+      }
+    });
+
+    // Manejo del formulario de login (existente)
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-
-        errorDiv.classList.add('d-none');
+        loginError.classList.add('d-none');
         emailInput.classList.remove('is-invalid');
         passwordInput.classList.remove('is-invalid');
 
@@ -100,12 +181,11 @@
 
         if (!isValid) return;
 
-        submitText.classList.add('d-none');
-        submitSpinner.classList.remove('d-none');
-        submitBtn.disabled = true;
+        loginText.classList.add('d-none');
+        loginSpinner.classList.remove('d-none');
+        loginBtn.disabled = true;
 
         try {
-            console.log("Enviando datos de login...");
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
@@ -114,11 +194,8 @@
                 body: JSON.stringify({
                     email: emailInput.value,
                     password: passwordInput.value
-                }),
-                credentials: 'include' // Añade esto para incluir cookies
+                })
             });
-
-            console.log("Respuesta recibida, status:", response.status);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -126,28 +203,111 @@
             }
 
             const data = await response.json();
-            console.log("Datos recibidos:", data);
 
             if (data.accessToken) {
                 localStorage.setItem('authToken', data.accessToken);
-                console.log("Token guardado:", localStorage.getItem('authToken'));
-
-                // Redirigir directamente sin pasar el token por URL (más seguro)
                 window.location.href = '/home';
             } else {
                 throw new Error('No se recibió token en la respuesta');
             }
         } catch (error) {
             console.error("Error en el login:", error);
-            errorDiv.textContent = error.message || 'Error durante el inicio de sesión';
-            errorDiv.classList.remove('d-none');
+            loginError.textContent = error.message || 'Error durante el inicio de sesión';
+            loginError.classList.remove('d-none');
         } finally {
-            submitText.classList.remove('d-none');
-            submitSpinner.classList.add('d-none');
-            submitBtn.disabled = false;
+            loginText.classList.remove('d-none');
+            loginSpinner.classList.add('d-none');
+            loginBtn.disabled = false;
         }
     });
-});
+
+    // Manejo del formulario de registro
+    registerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Resetear mensajes y validaciones
+        registerMessage.classList.add('d-none');
+        Array.from(registerForm.elements).forEach(el => el.classList.remove('is-invalid'));
+
+        // Validar contraseñas coincidentes
+        if (regPasswordInput.value !== regConfirmPasswordInput.value) {
+            regConfirmPasswordInput.setCustomValidity("Las contraseñas no coinciden");
+            regConfirmPasswordInput.classList.add('is-invalid');
+            return;
+        }
+
+        // Validar otros campos
+        let isValid = true;
+        if (!regNameInput.checkValidity()) {
+            regNameInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        if (!regEmailInput.checkValidity()) {
+            regEmailInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        if (regPhoneInput.value && !regPhoneInput.checkValidity()) {
+            regPhoneInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        if (!regPasswordInput.checkValidity()) {
+            regPasswordInput.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        if (!isValid) return;
+
+        registerText.classList.add('d-none');
+        registerSpinner.classList.remove('d-none');
+        registerBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: regNameInput.value,
+                    email: regEmailInput.value,
+                    phoneNumber: regPhoneInput.value || null,
+                    password: regPasswordInput.value
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Error en el registro');
+            }
+
+            // Registro exitoso
+            registerMessage.textContent = '¡Registro exitoso! Redirigiendo...';
+            registerMessage.classList.remove('alert-danger');
+            registerMessage.classList.add('alert-success');
+            registerMessage.classList.remove('d-none');
+
+            // Auto-login después del registro
+            setTimeout(() => {
+                emailInput.value = regEmailInput.value;
+                passwordInput.value = regPasswordInput.value;
+                document.getElementById('login-tab').click();
+                loginForm.dispatchEvent(new Event('submit'));
+            }, 1500);
+
+        } catch (error) {
+            console.error("Error en el registro:", error);
+            registerMessage.textContent = error.message || 'Error durante el registro';
+            registerMessage.classList.remove('alert-success');
+            registerMessage.classList.add('alert-danger');
+            registerMessage.classList.remove('d-none');
+        } finally {
+            registerText.classList.remove('d-none');
+            registerSpinner.classList.add('d-none');
+            registerBtn.disabled = false;
+        }
+    });
+  });
 </script>
 </body>
 </html>
