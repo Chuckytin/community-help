@@ -12,6 +12,8 @@ import com.help.community.integration.OpenRouteService;
 import com.help.community.request.service.RequestService;
 import jakarta.validation.Valid;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +33,7 @@ import java.net.URI;
 import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,6 +45,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/requests")
 public class RequestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(RequestController.class);
 
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
@@ -70,8 +75,10 @@ public class RequestController {
      * @return ResponseEntity con el DTO de la solicitud y HTTP 201.
      */
     @PostMapping
-    public ResponseEntity<RequestResponseDTO> createRequest(
+    public ResponseEntity<Map<String, Object>> createRequest(
             @Valid @RequestBody CreateRequestDTO requestDTO) {
+
+        logger.info("Recibida solicitud para crear nueva petición: {}", requestDTO);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -84,22 +91,35 @@ public class RequestController {
         User creator = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
+        Request request = getRequest(requestDTO, creator);
+
+        Request savedRequest = requestRepository.save(request);
+
+        logger.info("Solicitud creada con ID: {}", savedRequest.getRequest_id());
+
+        // Crear respuesta explícita con el ID
+        Map<String, Object> response = new HashMap<>();
+        response.put("request_id", savedRequest.getRequest_id());
+        response.put("message", "Solicitud creada exitosamente");
+
+        return ResponseEntity
+                .created(URI.create("/api/requests/" + savedRequest.getRequest_id()))
+                .body(response);
+    }
+
+    private static Request getRequest(CreateRequestDTO requestDTO, User creator) {
         Request request = new Request();
         request.setTitle(requestDTO.getTitle());
         request.setDescription(requestDTO.getDescription());
         request.setCategory(requestDTO.getCategory());
         request.setDeadline(requestDTO.getDeadline());
         request.setCreator(creator);
+        request.setStatus("PENDIENTE");
 
         if (requestDTO.getLatitude() != null && requestDTO.getLongitude() != null) {
             request.setLocationFromLatLon(requestDTO.getLatitude(), requestDTO.getLongitude());
         }
-
-        Request savedRequest = requestRepository.save(request);
-
-        return ResponseEntity
-                .created(URI.create("/api/requests/" + savedRequest.getRequest_id()))
-                .body(requestService.toDTO(savedRequest));
+        return request;
     }
 
 

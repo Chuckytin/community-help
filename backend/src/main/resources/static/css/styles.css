@@ -83,3 +83,33 @@ body {
     align-items: center;
     width: 100%;
 }
+
+/* Estilos para el formulario de creación */
+.location-marker {
+    background: transparent;
+    border: none;
+}
+
+/* Validación de formulario */
+.was-validated .form-control:invalid,
+.was-validated .form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+.was-validated .form-control:valid,
+.was-validated .form-control.is-valid {
+    border-color: #198754;
+}
+
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
+
+.was-validated .form-control:invalid ~ .invalid-feedback,
+.was-validated .form-control.is-invalid ~ .invalid-feedback {
+    display: block;
+}

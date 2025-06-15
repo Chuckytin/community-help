@@ -1,6 +1,8 @@
 package com.help.community.request.dto;
 
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import lombok.Builder;
@@ -16,18 +18,22 @@ import java.time.LocalDateTime;
 @Builder
 public class CreateRequestDTO {
 
-    @NotBlank(message = "Title cannot be empty")
-    @Size(max = 100, message = "Title cannot exceed 100 characters")
+    @NotBlank(message = "El título es obligatorio")
     private String title;
 
-    @NotBlank(message = "Description cannot be empty")
+    @NotBlank(message = "La descripción es obligatoria")
     private String description;
 
-    @NotBlank(message = "Category cannot be empty")
+    @NotBlank(message = "La categoría es obligatoria")
     private String category;
 
-    private Double latitude;
-    private Double longitude;
+    @Future(message = "La fecha debe ser futura")
     private LocalDateTime deadline;
+
+    @NotNull(message = "La latitud es obligatoria")
+    private Double latitude;
+
+    @NotNull(message = "La longitud es obligatoria")
+    private Double longitude;
 
 }

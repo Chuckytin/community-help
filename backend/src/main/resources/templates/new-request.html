@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crear Nueva Solicitud - Ayuda Comunitaria</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
+  <link rel="stylesheet" th:href="@{/webjars/leaflet/1.9.4/dist/leaflet.css}"/>
+  <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
+  <link rel="stylesheet" th:href="@{/css/styles.css}"/>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container">
+    <a class="navbar-brand" href="/home">Ayuda Comunitaria</a>
+    <div class="navbar-nav ms-auto">
+            <span class="navbar-text me-3" th:if="${user != null}">
+                Hola, <span th:text="${user.name}">Usuario</span>!
+            </span>
+      <a class="btn btn-outline-light" href="#" th:href="@{/logout}">
+        <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h4><i class="fas fa-plus-circle"></i> Crear Nueva Solicitud</h4>
+        </div>
+        <div class="card-body">
+          <form id="requestForm" th:action="@{/api/requests}" method="post">
+            <div class="mb-3">
+              <label for="title" class="form-label">Título</label>
+              <input type="text" class="form-control" id="title" name="title" required
+                     placeholder="Ej: Pasear a mi perro">
+            </div>
+
+            <div class="mb-3">
+              <label for="description" class="form-label">Descripción</label>
+              <textarea class="form-control" id="description" name="description" rows="3" required
+                        placeholder="Describe con detalle qué necesitas"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="category" class="form-label">Categoría</label>
+              <select class="form-select" id="category" name="category" required>
+                <option value="">Selecciona una categoría</option>
+                <option value="URGENTE">Urgente</option>
+                <option value="NO URGENTE">No urgente</option>
+                <option value="AYUDA DOMÉSTICA">Ayuda doméstica</option>
+                <option value="COMPAÑÍA">Compañía</option>
+                <option value="OTROS">Otros</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="deadline" class="form-label">Fecha límite</label>
+              <input type="datetime-local" class="form-control" id="deadline" name="deadline" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Ubicación</label>
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Selecciona tu ubicación en el mapa
+              </div>
+              <div id="map" style="height: 300px; border-radius: 5px;"></div>
+              <input type="hidden" id="latitude" name="latitude">
+              <input type="hidden" id="longitude" name="longitude">
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <a th:href="@{/home}" class="btn btn-secondary me-md-2">
+                <i class="fas fa-times"></i> Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Crear Solicitud
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/webjars/leaflet/1.9.4/dist/leaflet.js}"></script>
+<script th:src="@{/js/create-request.js}"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Solicitud Creada</title>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
+</head>
+<body>
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card text-center">
+        <div class="card-header bg-success text-white">
+          <h3><i class="fas fa-check-circle"></i> Solicitud Creada</h3>
+        </div>
+        <div class="card-body">
+          <p class="card-text">Tu solicitud ha sido creada exitosamente.</p>
+          <a th:href="@{/home}" class="btn btn-primary">
+            <i class="fas fa-home"></i> Volver al inicio
+          </a>
+          <a th:href="@{'/request/' + ${requestId}}" class="btn btn-outline-primary">
+            <i class="fas fa-eye"></i> Ver solicitud
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

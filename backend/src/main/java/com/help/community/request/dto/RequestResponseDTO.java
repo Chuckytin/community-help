@@ -1,5 +1,6 @@
 package com.help.community.request.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.help.community.user.dto.UserDTO;
 import lombok.Builder;
 import lombok.Data;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class RequestResponseDTO {
 
+    @JsonProperty("request_id")
     private Long id;
     private String title;
     private String description;
@@ -35,7 +37,6 @@ public class RequestResponseDTO {
     private String transportModeLabel;
     private Long timeToDeadline;
 
-    // Métodos auxiliares para el frontend
     public String getFormattedDistance() {
         if (travelDistance == null) return "N/A";
         return travelDistance > 1000 ?
@@ -52,6 +53,4 @@ public class RequestResponseDTO {
                 String.format("%dm", minutes);
     }
 
-//    @Builder.Default
-//    private Boolean allowsCarTransport = false;
 }
