@@ -1,25 +1,29 @@
 package com.help.community.request.controller;
 
+import com.help.community.request.dto.*;
 import com.help.community.request.event.RequestStatusChangedEvent;
-import com.help.community.request.dto.CreateRequestDTO;
-import com.help.community.request.dto.RequestResponseDTO;
-import com.help.community.request.dto.UpdateRequestDTO;
-import com.help.community.request.dto.UpdateStatusDTO;
 import com.help.community.core.exception.ResourceNotFoundException;
 import com.help.community.request.model.Request;
+import com.help.community.request.service.GeocodingService;
 import com.help.community.user.model.User;
 import com.help.community.request.repository.RequestRepository;
 import com.help.community.user.repository.UserRepository;
 import com.help.community.integration.OpenRouteService;
 import com.help.community.request.service.RequestService;
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
+import lombok.Data;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
@@ -44,15 +48,17 @@ public class RequestController {
     private final RequestService requestService;
     private final RequestControllerUtils requestControllerUtils;
     private final ApplicationEventPublisher eventPublisher;
+    private final GeocodingService geocodingService;
 
     public RequestController(RequestRepository requestRepository, UserRepository userRepository,
                              RequestService requestService, RequestControllerUtils requestControllerUtils,
-                             ApplicationEventPublisher eventPublisher) {
+                             ApplicationEventPublisher eventPublisher, GeocodingService geocodingService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;
         this.requestControllerUtils = requestControllerUtils;
         this.eventPublisher = eventPublisher;
+        this.geocodingService = geocodingService;
     }
 
     /**
@@ -63,11 +69,18 @@ public class RequestController {
      */
     @PostMapping
     public ResponseEntity<RequestResponseDTO> createRequest(
-            @Valid @RequestBody CreateRequestDTO requestDTO,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @Valid @RequestBody CreateRequestDTO requestDTO) {
 
-        User creator = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found."));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated() ||
+                authentication instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String username = authentication.getName();
+        User creator = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
         Request request = new Request();
         request.setTitle(requestDTO.getTitle());
@@ -305,6 +318,50 @@ public class RequestController {
                 .header("requestId", id.toString())
                 .header("deletedAt", LocalDateTime.now().toString())
                 .build();
+    }
+
+    @PostMapping("/search-by-location")
+    public ResponseEntity<List<RequestNearbyDTO>> searchRequestsByLocation(
+            @RequestBody LocationSearchDTO searchDTO,
+            @RequestParam(defaultValue = "10000") double radius) {
+
+        try {
+            double[] coords = geocodingService.getCoordinates(
+                    searchDTO.getCity(),
+                    searchDTO.getPostalCode()
+            );
+
+            List<Request> requests = requestRepository.findNearbyPendingRequests(
+                    coords[0], coords[1], radius
+            );
+
+            List<RequestNearbyDTO> dtos = requests.stream()
+                    .map(request -> requestService.toNearbyDTO(request, coords[0], coords[1]))
+                    .sorted(Comparator.comparing(RequestNearbyDTO::getDistance))
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(dtos);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+    }
+
+    private double[] getCoordinatesFromLocation(String city, String postalCode) {
+        // Implementación básica - en producción usarías un servicio de geocodificación
+        // Esto es un ejemplo - deberías implementar o inyectar un GeocodingService
+        if ("madrid".equalsIgnoreCase(city)) {
+            return new double[]{40.4168, -3.7038}; // Coordenadas de Madrid
+        }
+        // ... otros casos
+        throw new IllegalArgumentException("Ubicación no encontrada");
+    }
+
+    @Data
+    static class LocationSearchDTO {
+        private String city;
+        private String postalCode;
     }
 
 }

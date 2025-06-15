@@ -8,31 +8,8 @@
   <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
   <!-- Font Awesome para iconos -->
   <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
-  <style>
-    .auth-container {
-        max-width: 400px;
-        margin: 100px auto;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .form-control:focus {
-        border-color: #3b7ddd;
-        box-shadow: 0 0 0 0.25rem rgba(59, 125, 221, 0.25);
-    }
-    .btn-primary {
-        background-color: #3b7ddd;
-        border-color: #3b7ddd;
-    }
-    .auth-tabs .nav-link {
-        color: #495057;
-    }
-    .auth-tabs .nav-link.active {
-        color: #3b7ddd;
-        font-weight: bold;
-    }
-  </style>
+  <!-- CSS personalizado -->
+  <link rel="stylesheet" th:href="@{/css/auth.css}"/>
 </head>
 <body>
 <div class="container">
@@ -75,13 +52,13 @@
             <input type="password" class="form-control" id="password" required>
             <div class="invalid-feedback">Por favor ingresa tu contraseña</div>
           </div>
-          <button type="submit" class="btn btn-primary w-100 mb-3" id="loginBtn">
-            <span id="loginText">Ingresar</span>
-            <span id="loginSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          <button type="submit" class="btn btn-primary w-100 mb-3">
+            <span class="btn-text">Ingresar</span>
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
           </button>
 
           <!-- Mensaje de error -->
-          <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
+          <div class="alert alert-danger mt-3 d-none" id="loginError"></div>
         </form>
       </div>
 
@@ -113,13 +90,13 @@
             <input type="password" class="form-control" id="regConfirmPassword" required>
             <div class="invalid-feedback">Las contraseñas no coinciden</div>
           </div>
-          <button type="submit" class="btn btn-primary w-100 mb-3" id="registerBtn">
-            <span id="registerText">Registrarse</span>
-            <span id="registerSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+          <button type="submit" class="btn btn-primary w-100 mb-3">
+            <span class="btn-text">Registrarse</span>
+            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
           </button>
 
           <!-- Mensaje de error/éxito -->
-          <div id="registerMessage" class="alert d-none mt-3"></div>
+          <div class="alert d-none mt-3" id="registerMessage"></div>
         </form>
       </div>
     </div>
@@ -128,186 +105,7 @@
 
 <!-- Bootstrap JS -->
 <script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Elementos del formulario de login
-    const loginForm = document.getElementById('loginForm');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginText = document.getElementById('loginText');
-    const loginSpinner = document.getElementById('loginSpinner');
-    const loginError = document.getElementById('loginError');
-
-    // Elementos del formulario de registro
-    const registerForm = document.getElementById('registerForm');
-    const regNameInput = document.getElementById('regName');
-    const regEmailInput = document.getElementById('regEmail');
-    const regPhoneInput = document.getElementById('regPhone');
-    const regPasswordInput = document.getElementById('regPassword');
-    const regConfirmPasswordInput = document.getElementById('regConfirmPassword');
-    const registerBtn = document.getElementById('registerBtn');
-    const registerText = document.getElementById('registerText');
-    const registerSpinner = document.getElementById('registerSpinner');
-    const registerMessage = document.getElementById('registerMessage');
-
-    // Validación de confirmación de contraseña
-    regConfirmPasswordInput.addEventListener('input', function() {
-      if (regPasswordInput.value !== regConfirmPasswordInput.value) {
-        regConfirmPasswordInput.setCustomValidity("Las contraseñas no coinciden");
-        regConfirmPasswordInput.classList.add('is-invalid');
-      } else {
-        regConfirmPasswordInput.setCustomValidity("");
-        regConfirmPasswordInput.classList.remove('is-invalid');
-      }
-    });
-
-    // Manejo del formulario de login (existente)
-    loginForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        loginError.classList.add('d-none');
-        emailInput.classList.remove('is-invalid');
-        passwordInput.classList.remove('is-invalid');
-
-        let isValid = true;
-        if (!emailInput.value || !emailInput.checkValidity()) {
-            emailInput.classList.add('is-invalid');
-            isValid = false;
-        }
-        if (!passwordInput.value) {
-            passwordInput.classList.add('is-invalid');
-            isValid = false;
-        }
-
-        if (!isValid) return;
-
-        loginText.classList.add('d-none');
-        loginSpinner.classList.remove('d-none');
-        loginBtn.disabled = true;
-
-        try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: emailInput.value,
-                    password: passwordInput.value
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error en la respuesta del servidor');
-            }
-
-            const data = await response.json();
-
-            if (data.accessToken) {
-                localStorage.setItem('authToken', data.accessToken);
-                window.location.href = '/home';
-            } else {
-                throw new Error('No se recibió token en la respuesta');
-            }
-        } catch (error) {
-            console.error("Error en el login:", error);
-            loginError.textContent = error.message || 'Error durante el inicio de sesión';
-            loginError.classList.remove('d-none');
-        } finally {
-            loginText.classList.remove('d-none');
-            loginSpinner.classList.add('d-none');
-            loginBtn.disabled = false;
-        }
-    });
-
-    // Manejo del formulario de registro
-    registerForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        // Resetear mensajes y validaciones
-        registerMessage.classList.add('d-none');
-        Array.from(registerForm.elements).forEach(el => el.classList.remove('is-invalid'));
-
-        // Validar contraseñas coincidentes
-        if (regPasswordInput.value !== regConfirmPasswordInput.value) {
-            regConfirmPasswordInput.setCustomValidity("Las contraseñas no coinciden");
-            regConfirmPasswordInput.classList.add('is-invalid');
-            return;
-        }
-
-        // Validar otros campos
-        let isValid = true;
-        if (!regNameInput.checkValidity()) {
-            regNameInput.classList.add('is-invalid');
-            isValid = false;
-        }
-        if (!regEmailInput.checkValidity()) {
-            regEmailInput.classList.add('is-invalid');
-            isValid = false;
-        }
-        if (regPhoneInput.value && !regPhoneInput.checkValidity()) {
-            regPhoneInput.classList.add('is-invalid');
-            isValid = false;
-        }
-        if (!regPasswordInput.checkValidity()) {
-            regPasswordInput.classList.add('is-invalid');
-            isValid = false;
-        }
-
-        if (!isValid) return;
-
-        registerText.classList.add('d-none');
-        registerSpinner.classList.remove('d-none');
-        registerBtn.disabled = true;
-
-        try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: regNameInput.value,
-                    email: regEmailInput.value,
-                    phoneNumber: regPhoneInput.value || null,
-                    password: regPasswordInput.value
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Error en el registro');
-            }
-
-            // Registro exitoso
-            registerMessage.textContent = '¡Registro exitoso! Redirigiendo...';
-            registerMessage.classList.remove('alert-danger');
-            registerMessage.classList.add('alert-success');
-            registerMessage.classList.remove('d-none');
-
-            // Auto-login después del registro
-            setTimeout(() => {
-                emailInput.value = regEmailInput.value;
-                passwordInput.value = regPasswordInput.value;
-                document.getElementById('login-tab').click();
-                loginForm.dispatchEvent(new Event('submit'));
-            }, 1500);
-
-        } catch (error) {
-            console.error("Error en el registro:", error);
-            registerMessage.textContent = error.message || 'Error durante el registro';
-            registerMessage.classList.remove('alert-success');
-            registerMessage.classList.add('alert-danger');
-            registerMessage.classList.remove('d-none');
-        } finally {
-            registerText.classList.remove('d-none');
-            registerSpinner.classList.add('d-none');
-            registerBtn.disabled = false;
-        }
-    });
-  });
-</script>
+<!-- JS personalizado -->
+<script th:src="@{/js/auth.js}"></script>
 </body>
 </html>

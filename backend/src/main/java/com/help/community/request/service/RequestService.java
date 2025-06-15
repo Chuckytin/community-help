@@ -86,7 +86,7 @@ public class RequestService {
                 .collect(Collectors.toList());
     }
 
-    private RequestNearbyDTO toNearbyDTO(Request request, Double userLat, Double userLon) {
+    public RequestNearbyDTO toNearbyDTO(Request request, Double userLat, Double userLon) {
         return RequestNearbyDTO.builder()
                 .id(request.getRequest_id())
                 .title(request.getTitle())

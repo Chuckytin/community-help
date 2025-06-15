@@ -1,0 +1,85 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.user-card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#map {
+    height: 400px;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    z-index: 1;
+}
+
+/* Estilos para los marcadores del mapa */
+.user-marker {
+    background: transparent;
+    border: none;
+}
+
+.request-marker {
+    background: transparent;
+    border: none;
+}
+
+/* Estilos para los popups del mapa */
+.leaflet-popup-content {
+    min-width: 200px;
+}
+
+.leaflet-popup-content a.btn {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+/* Alertas del mapa */
+.alert-map {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    max-width: 300px;
+    display: none;
+}
+
+/* Spinner para botón de carga */
+.fa-spinner {
+    margin-right: 5px;
+}
+
+/* Input group adjustments */
+.input-group {
+    flex-wrap: nowrap;
+}
+
+#currentLocationBtn {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+    margin-right: 8px; /* Añadido margen a la derecha */
+}
+
+#city {
+    border-radius: 0.25rem 0 0 0.25rem; /* Ajuste de bordes */
+    border-left: 1px solid #ced4da; /* Añadido borde izquierdo */
+}
+
+#postalCode {
+    border-radius: 0;
+    border-right: none;
+}
+
+#searchForm button[type="submit"] {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Ajuste específico para el grupo de inputs */
+.search-input-group {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}

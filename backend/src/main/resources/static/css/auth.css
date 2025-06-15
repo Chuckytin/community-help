@@ -1,0 +1,54 @@
+.auth-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    background-color: white;
+}
+
+.form-control:focus {
+    border-color: #3b7ddd;
+    box-shadow: 0 0 0 0.25rem rgba(59, 125, 221, 0.25);
+}
+
+.btn-primary {
+    background-color: #3b7ddd;
+    border-color: #3b7ddd;
+}
+
+.auth-tabs .nav-link {
+    color: #495057;
+    border: none;
+    padding: 10px 20px;
+}
+
+.auth-tabs .nav-link.active {
+    color: #3b7ddd;
+    font-weight: bold;
+    background: transparent;
+    border-bottom: 2px solid #3b7ddd;
+}
+
+.auth-tabs .nav-item {
+    margin-bottom: -1px;
+}
+
+.btn-google {
+    background-color: #db4437;
+    color: white;
+}
+
+.btn-google:hover {
+    background-color: #c23321;
+    color: white;
+}
+
+.spinner-border {
+    vertical-align: middle;
+}
+
+.btn-text {
+    vertical-align: middle;
+}
