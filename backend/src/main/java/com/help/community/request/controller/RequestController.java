@@ -1,5 +1,6 @@
 package com.help.community.request.controller;
 
+import com.help.community.core.security.oauth2.model.CustomOAuth2User;
 import com.help.community.request.dto.*;
 import com.help.community.request.event.RequestStatusChangedEvent;
 import com.help.community.core.exception.ResourceNotFoundException;
@@ -152,13 +153,29 @@ public class RequestController {
      *
      */
     @GetMapping("/mine")
-    public List<RequestResponseDTO> getMyRequests(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    public ResponseEntity<List<RequestResponseDTO>> getMyRequests(
+            @AuthenticationPrincipal Object principal) {
 
-        return user.getCreatedRequests().stream()
+        String username;
+
+        if (principal instanceof CustomOAuth2User oauthUser) {
+            username = oauthUser.getEmail();
+        } else if (principal instanceof UserDetails userDetails) {
+            username = userDetails.getUsername();
+        } else if (principal instanceof String) {
+            username = (String) principal;
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+        List<RequestResponseDTO> requests = user.getCreatedRequests().stream()
                 .map(requestService::toDTO)
                 .collect(Collectors.toList());
+
+        return ResponseEntity.ok(requests);
     }
 
     /**
@@ -343,32 +360,22 @@ public class RequestController {
     }
 
     @PostMapping("/search-by-location")
-    public ResponseEntity<List<RequestNearbyDTO>> searchRequestsByLocation(
-            @RequestBody LocationSearchDTO searchDTO) {
-
+    public ResponseEntity<List<RequestNearbyDTO>> searchRequestsByLocation(@RequestBody LocationSearchDTO searchDTO) {
         try {
-            // 1. Verificar si el municipio existe
             if (!geocodingService.existsMunicipality(searchDTO.getCity())) {
-                return ResponseEntity.badRequest().build();
+                return ResponseEntity.badRequest().body(List.of());
             }
-
-            // 2. Obtener coordenadas de la ciudad
             double[] coords = geocodingService.getCoordinates(searchDTO.getCity());
-
-            // 3. Buscar solicitudes cercanas
-            List<Request> requests = requestRepository.findNearbyPendingRequests(
-                    coords[0], coords[1], 10000 // Radio de 10km
-            );
-
-            // 4. Convertir a DTOs
+            List<Request> requests = requestRepository.findNearbyPendingRequests(coords[0], coords[1], 10000);
             List<RequestNearbyDTO> dtos = requests.stream()
                     .map(request -> requestService.toNearbyDTO(request, coords[0], coords[1]))
                     .collect(Collectors.toList());
-
             return ResponseEntity.ok(dtos);
-
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(List.of());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            logger.error("Error al buscar solicitudes por ubicación: {}", searchDTO.getCity(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

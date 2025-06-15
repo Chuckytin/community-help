@@ -4,6 +4,8 @@ import com.help.community.core.security.oauth2.model.CustomOAuth2User;
 import com.help.community.core.security.service.JwtService;
 import com.help.community.home.dto.DtoConverter;
 import com.help.community.request.dto.RequestNearbyDTO;
+import com.help.community.request.model.Request;
+import com.help.community.request.repository.RequestRepository;
 import com.help.community.request.service.RequestService;
 import com.help.community.user.dto.UserProfileDTO;
 import com.help.community.user.model.User;
@@ -11,6 +13,7 @@ import com.help.community.user.repository.UserRepository;
 import com.help.community.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,11 +23,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
 public class HomeController {
 
+    private final RequestRepository requestRepository;
     private final RequestService requestService;
     private final UserService userService;
     private final DtoConverter dtoConverter;
@@ -43,6 +48,9 @@ public class HomeController {
             user = userRepository.findByEmail(oauthUser.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
             attributes = oauthUser.getAttributes();
+        } else if (principal instanceof UserDetails userDetails) {
+            user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
         } else if (principal instanceof String email) {
             user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
@@ -64,6 +72,12 @@ public class HomeController {
             UserProfileDTO userProfile = userService.getUserProfile(user.getUserId());
             model.addAttribute("user", dtoConverter.convertToUserDto(user));
             model.addAttribute("authAttributes", attributes);
+
+            // Añadir las solicitudes del usuario al modelo
+            List<Request> userRequests = requestRepository.findByCreatorOrderByCreatedAtDesc(user);
+            model.addAttribute("userRequests", userRequests.stream()
+                    .map(requestService::toDTO)
+                    .collect(Collectors.toList()));
 
             if (userProfile.getLatitude() != null && userProfile.getLongitude() != null) {
                 List<RequestNearbyDTO> nearbyRequests = requestService.findNearbyRequests(

@@ -1,12 +1,17 @@
 package com.help.community.request.service;
 
+import com.help.community.core.security.oauth2.model.CustomOAuth2User;
 import com.help.community.request.dto.RequestNearbyDTO;
 import com.help.community.request.dto.RequestResponseDTO;
 import com.help.community.user.dto.UserDTO;
 import com.help.community.request.model.Request;
 import com.help.community.request.repository.RequestRepository;
+import com.help.community.user.model.User;
+import com.help.community.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,9 +25,31 @@ import java.util.stream.Collectors;
 public class RequestService {
 
     private final RequestRepository requestRepository;
+    private final UserRepository userRepository;
 
-    public RequestService(RequestRepository requestRepository) {
+    public RequestService(RequestRepository requestRepository, UserRepository userRepository) {
         this.requestRepository = requestRepository;
+        this.userRepository = userRepository;
+    }
+
+    public List<RequestResponseDTO> getMyRequests(Object principal) {
+        String username;
+        if (principal instanceof CustomOAuth2User oauthUser) {
+            username = oauthUser.getEmail();
+        } else if (principal instanceof UserDetails userDetails) {
+            username = userDetails.getUsername();
+        } else if (principal instanceof String) {
+            username = (String) principal;
+        } else {
+            throw new UsernameNotFoundException("Usuario no autenticado");
+        }
+
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+        return user.getCreatedRequests().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -48,7 +75,6 @@ public class RequestService {
      * Convierte una entidad Request a su DTO correspondiente.
      */
     public RequestResponseDTO toDTO(Request request) {
-
         UserDTO creatorDTO = UserDTO.builder()
                 .id(request.getCreator().getUserId())
                 .name(request.getCreator().getName())
@@ -64,12 +90,20 @@ public class RequestService {
                     .build();
         }
 
+        // Map status to CSS class
+        String statusClass = switch (request.getStatus()) {
+            case "PENDIENTE" -> "bg-warning";
+            case "ACEPTADO" -> "bg-success";
+            default -> "bg-secondary";
+        };
+
         return RequestResponseDTO.builder()
                 .id(request.getRequest_id())
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .category(request.getCategory())
                 .status(request.getStatus())
+                .statusClass(statusClass)
                 .createdAt(request.getCreatedAt())
                 .deadline(request.getDeadline())
                 .creator(creatorDTO)
@@ -80,7 +114,7 @@ public class RequestService {
     }
 
     public List<RequestNearbyDTO> findNearbyRequests(Double latitude, Double longitude, Double radius) {
-        return requestRepository.findNearbyRequests(latitude, longitude, radius)
+        return requestRepository.findNearbyPendingRequests(latitude, longitude, radius)
                 .stream()
                 .map(request -> toNearbyDTO(request, latitude, longitude))
                 .collect(Collectors.toList());

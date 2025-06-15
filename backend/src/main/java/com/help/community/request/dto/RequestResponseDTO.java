@@ -21,6 +21,7 @@ public class RequestResponseDTO {
     private String description;
     private String category;
     private String status;
+    private String statusClass;
     private LocalDateTime createdAt;
     private LocalDateTime deadline;
 

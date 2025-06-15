@@ -51,9 +51,24 @@
                     <a th:href="@{/request/new}" class="btn btn-primary w-100 mb-2">
                         <i class="fas fa-plus"></i> Crear solicitud
                     </a>
-                    <a th:href="@{/requests}" class="btn btn-outline-secondary w-100">
+                    <a th:href="@{/request}" class="btn btn-outline-secondary w-100">
                         <i class="fas fa-list"></i> Ver mis solicitudes
                     </a>
+                </div>
+            </div>
+            <div class="mt-4">
+                <h5><i class="fas fa-list"></i> Mis Últimas Solicitudes</h5>
+                <div class="list-group mt-2" th:if="${not userRequests.empty}">
+                    <a th:each="request : ${userRequests.size() > 3 ? userRequests.subList(0, 3) : userRequests}"
+                       th:href="@{'/request/' + ${request.id}}"
+                       class="list-group-item list-group-item-action">
+                        <strong th:text="${request.title}">Título</strong>
+                        <small class="d-block" th:text="${request.category}">Categoría</small>
+                        <small class="text-muted" th:text="${#temporals.format(request.createdAt, 'dd/MM/yyyy')}">Fecha</small>
+                    </a>
+                </div>
+                <div th:if="${userRequests.empty}" class="alert alert-info mt-3">
+                    No has creado ninguna solicitud aún.
                 </div>
             </div>
         </div>
