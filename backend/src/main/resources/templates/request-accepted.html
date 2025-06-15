@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Solicitud Aceptada - Ayuda Comunitaria</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
+    <link rel="stylesheet" th:href="@{/webjars/leaflet/1.9.4/dist/leaflet.css}"/>
+    <link rel="stylesheet" th:href="@{/css/request-accepted.css}"/>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="/home">Ayuda Comunitaria</a>
+        <div class="navbar-nav ms-auto">
+            <span class="navbar-text me-3">
+                Hola, <span th:text="${request.volunteer.name}">Voluntario</span>!
+            </span>
+            <a class="btn btn-outline-light" th:href="@{/logout}">
+                <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card confirmation-card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h3 class="text-success mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Solicitud Aceptada
+                    </h3>
+                    <span class="badge bg-success" th:text="${request.status}">ACEPTADO</span>
+                </div>
+
+                <div class="card-body">
+                    <!-- Mensaje de éxito -->
+                    <div th:if="${successMessage}" class="alert alert-success mb-4" th:text="${successMessage}"></div>
+
+                    <!-- Resumen de la solicitud -->
+                    <div class="request-summary">
+                        <h4 class="request-title" th:text="${request.title}">Título de la solicitud</h4>
+                        <p class="request-description" th:text="${request.description}">Descripción</p>
+                        <div class="request-meta">
+                            <span class="badge bg-info" th:text="${request.category}">Categoría</span>
+                            <span class="text-muted ms-2">
+                                <i class="fas fa-clock me-1"></i>
+                                <span th:text="${#temporals.format(request.deadline, 'dd/MM/yyyy HH:mm')}">Fecha límite</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Sección de dos columnas -->
+                    <div class="row mt-4">
+                        <!-- Columna izquierda - Detalles -->
+                        <div class="col-md-6 mb-4 mb-md-0">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-info-circle me-2"></i>Detalles</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled request-details">
+                                        <li>
+                                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                            <strong>Fecha creación:</strong>
+                                            <span th:text="${#temporals.format(request.createdAt, 'dd/MM/yyyy HH:mm')}"></span>
+                                        </li>
+                                        <li class="mt-2">
+                                            <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                            <strong>Ubicación:</strong>
+                                            <span th:text="${request.address ?: 'Ubicación no especificada'}"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna derecha - Contacto -->
+                        <div class="col-md-6">
+                            <div class="card h-100 contact-card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-address-card me-2"></i>Información de contacto</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="contact-person">
+                                        <h6><i class="fas fa-user me-2"></i>Persona que necesita ayuda:</h6>
+                                        <p class="contact-name" th:text="${request.creator.name}"></p>
+                                        <p class="contact-phone">
+                                            <i class="fas fa-phone me-2"></i>
+                                            <a th:href="'tel:' + ${request.creator.phoneNumber}"
+                                               th:text="${request.creator.phoneNumber}"></a>
+                                        </p>
+                                    </div>
+
+                                    <hr class="my-3">
+
+                                    <div class="volunteer-info">
+                                        <h6><i class="fas fa-hands-helping me-2"></i>Tú eres el voluntario:</h6>
+                                        <p class="volunteer-name" th:text="${request.volunteer.name}"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mapa -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-map-marked-alt me-2"></i>Ubicación en el mapa</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="requestMap"></div>
+                            <input type="hidden" id="latitude" th:value="${request.latitude}">
+                            <input type="hidden" id="longitude" th:value="${request.longitude}">
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-tasks me-2"></i>Progreso de la ayuda</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                <div class="timeline-item active">
+                                    <div class="timeline-point"><i class="fas fa-check"></i></div>
+                                    <div class="timeline-content">
+                                        <h6>Solicitud aceptada</h6>
+                                        <small class="text-muted" th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}"></small>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <h6>Ayuda completada</h6>
+                                        <small class="text-muted">Pendiente</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="action-buttons mt-4">
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                            <div class="d-flex gap-2">
+                                <a th:href="@{/home}" class="btn btn-outline-primary">
+                                    <i class="fas fa-home me-2"></i>Volver al inicio
+                                </a>
+                                <a th:href="@{'/request/' + ${request.id}}" class="btn btn-primary">
+                                    <i class="fas fa-info-circle me-2"></i>Ver detalles completos
+                                </a>
+                            </div>
+                            <div class="d-flex gap-2 mt-2 mt-md-0">
+                                <form th:action="@{'/api/requests/' + ${request.id} + '/complete'}" method="post">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-check-circle me-2"></i>Marcar como completada
+                                    </button>
+                                </form>
+                                <form th:action="@{'/api/requests/' + ${request.id} + '/cancel-volunteer'}" method="post">
+                                    <input type="hidden" name="_method" value="PUT">
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="fas fa-times-circle me-2"></i>Cancelar participación
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/webjars/leaflet/1.9.4/dist/leaflet.js}"></script>
+<script th:src="@{/js/request-accepted-map.js}"></script>
+</body>
+</html>

@@ -69,8 +69,35 @@
               <h5>Acciones</h5>
             </div>
             <div class="card-body">
+              <!-- Display distance and travel duration -->
+              <div class="mb-3">
+                <strong>Distancia:</strong>
+                <span th:text="${request.getFormattedDistance()}">N/A</span>
+              </div>
+              <div class="mb-3">
+                <strong>Tiempo de viaje:</strong>
+                <span th:text="${request.getFormattedDuration()}">N/A</span>
+              </div>
+
+              <!-- Conditional buttons -->
+              <!-- Modificar solicitud button -->
+              <div th:if="${isCreator}">
+                <a th:href="@{/request/edit/{id}(id=${request.id})}" class="btn btn-primary w-100 mb-2">
+                  <i class="fas fa-edit"></i> Modificar solicitud
+                </a>
+              </div>
+
+              <!-- Aceptar solicitud form -->
+              <div th:if="${not isCreator and request.status == 'PENDIENTE'}">
+                <form th:action="@{/api/requests/{id}/assign-volunteer(id=${request.id})}" method="post">
+                  <input type="hidden" name="_method" value="PATCH"/>
+                  <button type="submit" class="btn btn-success w-100 mb-2">
+                    <i class="fas fa-check"></i> Aceptar solicitud
+                  </button>
+                </form>
+              </div>
               <a th:href="@{/request}" class="btn btn-outline-primary w-100 mb-2">
-                <i class="fas fa-list"></i> Ver mis solicitudes
+                <i class="fas fa-arrow-left"></i> Ver mis solicitudes
               </a>
               <a th:href="@{/request/new}" class="btn btn-primary w-100 mb-2">
                 <i class="fas fa-plus"></i> Crear nueva solicitud

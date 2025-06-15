@@ -12,6 +12,7 @@ public class RequestNearbyDTO {
     private String category;
     private Double distance;
     private Point location;
+    private Double travelDuration;
 
     public Double getX() {
         return location != null ? location.getX() : null;

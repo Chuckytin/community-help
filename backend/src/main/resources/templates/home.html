@@ -56,23 +56,26 @@
                     </a>
                 </div>
             </div>
+            <!-- Mis Solicitudes Aceptadas -->
             <div class="mt-4">
-                <h5><i class="fas fa-list"></i> Mis Últimas Solicitudes</h5>
-                <div class="list-group mt-2" th:if="${not userRequests.empty}">
-                    <a th:each="request : ${userRequests.size() > 3 ? userRequests.subList(0, 3) : userRequests}"
-                       th:href="@{'/request/' + ${request.id}}"
+                <h5><i class="fas fa-list"></i> Mis Solicitudes Aceptadas</h5>
+                <div class="list-group mt-2" th:if="${volunteeringRequests != null and not volunteeringRequests.empty}">
+                    <a th:each="request : ${volunteeringRequests.size() > 3 ? volunteeringRequests.subList(0, 3) : volunteeringRequests}"
+                       th:href="@{'/request/accepted/' + ${request.id}}"
                        class="list-group-item list-group-item-action">
                         <strong th:text="${request.title}">Título</strong>
                         <small class="d-block" th:text="${request.category}">Categoría</small>
                         <small class="text-muted" th:text="${#temporals.format(request.createdAt, 'dd/MM/yyyy')}">Fecha</small>
+                        <span class="badge bg-success float-end mt-1">
+                <i class="fas fa-check-circle"></i> Aceptada
+            </span>
                     </a>
                 </div>
-                <div th:if="${userRequests.empty}" class="alert alert-info mt-3">
-                    No has creado ninguna solicitud aún.
+                <div th:if="${volunteeringRequests == null or volunteeringRequests.empty}" class="alert alert-info mt-3">
+                    No has aceptado ninguna solicitud aún.
                 </div>
             </div>
         </div>
-
         <!-- Mapa y solicitudes cercanas -->
         <div class="col-md-8">
             <div class="card">
@@ -98,7 +101,8 @@
             </div>
         </div>
     </div>
-</div>
+
+    </div>
 
 <!-- Scripts -->
 <script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>

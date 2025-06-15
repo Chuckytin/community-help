@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mis Solicitudes Aceptadas - Ayuda Comunitaria</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="/home">Ayuda Comunitaria</a>
+        <div class="navbar-nav ms-auto">
+            <a class="btn btn-outline-light" th:href="@{/logout}">
+                <i class="fas fa-sign-out-alt"></i>Cerrar sesión
+            </a>
+        </div>
+    </div>
+</nav>
+<div class="container py-4">
+    <h1>Mis Solicitudes Aceptadas</h1>
+    <div th:if="${requests.isEmpty()}">
+        <p class="text-muted">No tienes solicitudes aceptadas.</p>
+    </div>
+    <div th:unless="${requests.isEmpty()}" class="row">
+        <div class="col-md-12">
+            <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between align-items-center" th:each="request : ${requests}">
+                    <div>
+                        <h5 th:text="${request.title}">Título</h5>
+                        <p th:text="${request.description}">Descripción</p>
+                        <span class="badge" th:class="${request.statusClass}" th:text="${request.status}">Estado</span>
+                    </div>
+                    <a th:href="@{'/api/requests/accepted/' + ${request.id}}" class="btn btn-primary">
+                        <i class="fas fa-info-circle me-2"></i>Ver detalles
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <a th:href="@{/home}" class="btn btn-outline-primary mt-4">
+        <i class="fas fa-home me-2"></i>Volver al inicio
+    </a>
+</div>
+<script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

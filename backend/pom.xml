@@ -124,6 +124,12 @@
 			<artifactId>leaflet</artifactId>
 			<version>1.9.4</version>
 		</dependency>
+		<!-- thymeleaf-extras-java8time -->
+		<dependency>
+			<groupId>org.thymeleaf.extras</groupId>
+			<artifactId>thymeleaf-extras-java8time</artifactId>
+			<version>3.0.4.RELEASE</version>
+		</dependency>
 		<!-- font-awesome -->
 		<dependency>
 			<groupId>org.webjars</groupId>

@@ -45,6 +45,9 @@ public class Request {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User creator;

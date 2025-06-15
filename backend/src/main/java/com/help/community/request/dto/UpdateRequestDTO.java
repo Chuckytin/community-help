@@ -3,6 +3,8 @@ package com.help.community.request.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * DTO para la actualización de una solicitud de ayuda.
  */
@@ -17,9 +19,7 @@ public class UpdateRequestDTO {
     @NotBlank
     private String category;
 
-    @NotBlank
-    private String status;
+    private String status; // Made optional
 
-    private Double latitude;
-    private Double longitude;
+    private LocalDateTime deadline;
 }

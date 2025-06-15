@@ -11,6 +11,7 @@ import com.help.community.request.repository.RequestRepository;
 import com.help.community.user.repository.UserRepository;
 import com.help.community.integration.OpenRouteService;
 import com.help.community.request.service.RequestService;
+import com.help.community.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.Data;
 import org.slf4j.Logger;
@@ -28,22 +29,23 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URI;
 import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Controlador para manejar las operaciones relacionadas con solicitudes de ayuda.
  * Usa DTOs para las respuestas y validación de entrada.
  */
-@RestController
+@Controller
 @RequestMapping("/api/requests")
 public class RequestController {
 
@@ -52,17 +54,19 @@ public class RequestController {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final RequestService requestService;
+    private final UserService userService;
     private final RequestControllerUtils requestControllerUtils;
     private final ApplicationEventPublisher eventPublisher;
     private final GeocodingService geocodingService;
     private OpenRouteService openRouteService;
 
     public RequestController(RequestRepository requestRepository, UserRepository userRepository,
-                             RequestService requestService, RequestControllerUtils requestControllerUtils,
+                             RequestService requestService, UserService userService, RequestControllerUtils requestControllerUtils,
                              ApplicationEventPublisher eventPublisher, GeocodingService geocodingService, OpenRouteService openRouteService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;
+        this.userService = userService;
         this.requestControllerUtils = requestControllerUtils;
         this.eventPublisher = eventPublisher;
         this.geocodingService = geocodingService;
@@ -229,7 +233,6 @@ public class RequestController {
                 .sorted(Comparator.comparing(dto ->
                         dto.getTravelDistance() != null ? dto.getTravelDistance() : Double.MAX_VALUE))
                 .collect(Collectors.toList());
-
         return ResponseEntity.ok(result);
     }
 
@@ -238,9 +241,13 @@ public class RequestController {
      * Cambia automáticamente el estado de la solicitud a 'ACEPTADO'.
      */
     @PatchMapping("/{requestId}/assign-volunteer")
-    public ResponseEntity<RequestResponseDTO> assignVolunteer(
+    public String assignVolunteer(
             @PathVariable("requestId") Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal UserDetails userDetails,
+            RedirectAttributes redirectAttributes) throws AccessDeniedException {
+
+        logger.info("Assigning volunteer for request ID: {}", id);
+        logger.info("User: {}", userDetails.getUsername());
 
         Request request = requestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
@@ -248,10 +255,42 @@ public class RequestController {
         User volunteer = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+        if (request.getCreator().equals(volunteer)) {
+            throw new AccessDeniedException("No puedes aceptar tu propia solicitud");
+        }
+
+        if (!"PENDIENTE".equals(request.getStatus())) {
+            throw new IllegalStateException("Solo se pueden aceptar solicitudes pendientes");
+        }
+
         request.setVolunteer(volunteer);
         request.setStatus("ACEPTADO");
+        Request savedRequest = requestRepository.save(request); // Aquí guardamos y obtenemos la solicitud actualizada
 
-        return ResponseEntity.ok(requestService.toDTO(requestRepository.save(request)));
+        redirectAttributes.addFlashAttribute("successMessage", "¡Has aceptado la solicitud correctamente!");
+        redirectAttributes.addFlashAttribute("request", requestService.toDTO(savedRequest));
+
+        return "redirect:/api/requests/accepted/" + id;
+    }
+
+    // Para solicitudes normales (edición)
+    @GetMapping("/request/{id}")
+    public String showRequest(@PathVariable Long id, Model model) {
+        Optional<Request> request = requestRepository.findById(id);
+        model.addAttribute("request", request);
+        return "request-details";
+    }
+
+    @GetMapping("/request/accepted/{id}")
+    public String showAcceptConfirmation(@PathVariable Long id, Model model) {
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
+
+        if (!model.containsAttribute("request")) {
+            model.addAttribute("request", requestService.toDTO(request));
+        }
+
+        return "request-accepted";
     }
 
     /**
@@ -294,6 +333,63 @@ public class RequestController {
         return ResponseEntity.ok(requestService.toDTO(updatedRequest));
     }
 
+    @PostMapping("/{requestId}/complete")
+    public String completeRequest(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal UserDetails userDetails,
+            RedirectAttributes redirectAttributes) throws AccessDeniedException {
+
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
+
+        // Validar que el usuario es el voluntario asignado
+        if (!request.getVolunteer().getEmail().equals(userDetails.getUsername())) {
+            throw new AccessDeniedException("No tienes permiso para completar esta solicitud");
+        }
+
+        request.setStatus("COMPLETADA");
+        request.setCompletedAt(LocalDateTime.now());
+        requestRepository.save(request);
+
+        redirectAttributes.addFlashAttribute("successMessage",
+                "¡La solicitud ha sido marcada como completada con éxito!");
+
+        return "redirect:/request/accepted/" + requestId;
+    }
+
+    @GetMapping("/accepted/{id}")
+    public String showAcceptedRequest(@PathVariable Long id, Model model) {
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
+
+        model.addAttribute("request", requestService.toDTO(request));
+        return "request-accepted";
+    }
+
+    @PutMapping("/{requestId}/cancel-volunteer")
+    public String cancelVolunteer(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal UserDetails userDetails,
+            RedirectAttributes redirectAttributes) throws AccessDeniedException {
+
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
+
+        // Validar que el usuario es el voluntario asignado
+        if (!request.getVolunteer().getEmail().equals(userDetails.getUsername())) {
+            throw new AccessDeniedException("No tienes permiso para cancelar esta participación");
+        }
+
+        request.setVolunteer(null);
+        request.setStatus("PENDIENTE");
+        requestRepository.save(request);
+
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Has cancelado tu participación en esta solicitud");
+
+        return "redirect:/home";
+    }
+
     /**
      * Actualiza una solicitud existente si el usuario es el creador.
      * - Verificar que el usuario es el creador
@@ -305,25 +401,44 @@ public class RequestController {
      * @throws AccessDeniedException si el usuario no es el creador de la solicitud.
      */
     @PutMapping("/{requestId}")
-    public ResponseEntity<RequestResponseDTO> updateRequest(
+    public String updateRequest(
             @PathVariable("requestId") Long id,
-            @Valid @RequestBody UpdateRequestDTO updateDTO,
+            @ModelAttribute @Valid UpdateRequestDTO updateDTO,
+            BindingResult result,
+            Model model,
             @AuthenticationPrincipal UserDetails userDetails) throws AccessDeniedException {
-
-        Request request = requestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
-
-        if (!request.getCreator().getEmail().equals(userDetails.getUsername())) {
-            throw new AccessDeniedException("You can only update your own requests");
+        if (result.hasErrors()) {
+            model.addAttribute("request", updateDTO);
+            model.addAttribute("categories", Arrays.asList("URGENTE", "NO URGENTE", "AYUDA DOMÉSTICA", "COMPAÑÍA", "OTROS"));
+            return "edit-request";
         }
-
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
+        if (!request.getCreator().getEmail().equals(userDetails.getUsername())) {
+            throw new AccessDeniedException("Solo puedes actualizar tus propias solicitudes");
+        }
         request.setTitle(updateDTO.getTitle());
         request.setDescription(updateDTO.getDescription());
         request.setCategory(updateDTO.getCategory());
-        request.setStatus(updateDTO.getStatus());
+        request.setStatus(updateDTO.getStatus() != null ? updateDTO.getStatus() : request.getStatus());
+        request.setDeadline(updateDTO.getDeadline());
+        requestRepository.save(request);
+        return "redirect:/home";
+    }
 
-        Request updatedRequest = requestRepository.save(request);
-        return ResponseEntity.ok(requestService.toDTO(updatedRequest));
+    @GetMapping("/request/edit/{id}")
+    public String showEditRequestForm(@PathVariable("id") Long id, Model model, @AuthenticationPrincipal UserDetails userDetails) throws AccessDeniedException {
+        Request request = requestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
+        if (!request.getCreator().getEmail().equals(userDetails.getUsername())) {
+            throw new AccessDeniedException("Solo puedes editar tus propias solicitudes");
+        }
+        RequestResponseDTO requestDTO = requestService.toDTO(request, request.getCreator());
+        model.addAttribute("request", requestDTO);
+        model.addAttribute("user", userService.toDTO(userRepository.findByEmail(userDetails.getUsername()).orElse(null)));
+        // Lista de categorías para errores de validación (opcional)
+        model.addAttribute("categories", Arrays.asList("URGENTE", "NO URGENTE", "AYUDA DOMÉSTICA", "COMPAÑÍA", "OTROS"));
+        return "edit-request";
     }
 
     /**

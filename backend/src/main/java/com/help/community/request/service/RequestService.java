@@ -1,6 +1,8 @@
 package com.help.community.request.service;
 
 import com.help.community.core.security.oauth2.model.CustomOAuth2User;
+import com.help.community.integration.OpenRouteService;
+import com.help.community.request.controller.RequestController;
 import com.help.community.request.dto.RequestNearbyDTO;
 import com.help.community.request.dto.RequestResponseDTO;
 import com.help.community.user.dto.UserDTO;
@@ -8,6 +10,8 @@ import com.help.community.request.model.Request;
 import com.help.community.request.repository.RequestRepository;
 import com.help.community.user.model.User;
 import com.help.community.user.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,57 +28,37 @@ import java.util.stream.Collectors;
 @Service
 public class RequestService {
 
+    private static final Logger logger = LoggerFactory.getLogger(RequestService.class);
+
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
+    private final OpenRouteService openRouteService;
 
-    public RequestService(RequestRepository requestRepository, UserRepository userRepository) {
+    public RequestService(RequestRepository requestRepository, UserRepository userRepository, OpenRouteService openRouteService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
+        this.openRouteService = openRouteService;
     }
 
     public List<RequestResponseDTO> getMyRequests(Object principal) {
-        String username;
-        if (principal instanceof CustomOAuth2User oauthUser) {
-            username = oauthUser.getEmail();
-        } else if (principal instanceof UserDetails userDetails) {
-            username = userDetails.getUsername();
-        } else if (principal instanceof String) {
-            username = (String) principal;
-        } else {
-            throw new UsernameNotFoundException("Usuario no autenticado");
-        }
-
+        String username = getUsernameFromPrincipal(principal);
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
         return user.getCreatedRequests().stream()
-                .map(this::toDTO)
+                .map(request -> toDTO(request, user))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Obtiene todas las solicitudes SIN paginación (para compatibilidad con endpoints existentes).
-     * @deprecated Usar mejor getAllRequests(Pageable pageable) para nuevos desarrollos.
-     */
-    public List<RequestResponseDTO> getAllRequests() {
-        return requestRepository.findAll()
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Obtiene solicitudes PAGINADAS.
-     */
     public Page<RequestResponseDTO> getAllRequests(Pageable pageable) {
         return requestRepository.findAll(pageable)
-                .map(this::toDTO);
+                .map(request -> toDTO(request, null));
     }
 
-    /**
-     * Convierte una entidad Request a su DTO correspondiente.
-     */
-    public RequestResponseDTO toDTO(Request request) {
+    public RequestResponseDTO toDTO(Request request, User viewer) {
+        if (request.getRequest_id() == null) {
+            logger.error("Found request with null ID in toDTO: {}", request);
+        }
         UserDTO creatorDTO = UserDTO.builder()
                 .id(request.getCreator().getUserId())
                 .name(request.getCreator().getName())
@@ -90,12 +74,29 @@ public class RequestService {
                     .build();
         }
 
-        // Map status to CSS class
         String statusClass = switch (request.getStatus()) {
             case "PENDIENTE" -> "bg-warning";
             case "ACEPTADO" -> "bg-success";
             default -> "bg-secondary";
         };
+
+        // Calculate distance and duration if viewer location is available
+        Double travelDistance = null;
+        Double travelDuration = null;
+        if (viewer != null && viewer.getLatitude() != null && viewer.getLongitude() != null
+                && request.getLatitude() != 0 && request.getLongitude() != 0) {
+            try {
+                OpenRouteService.TravelTimeResponse travelResponse = openRouteService.getTravelTime(
+                        viewer.getLatitude(), viewer.getLongitude(),
+                        request.getLatitude(), request.getLongitude(),
+                        OpenRouteService.TransportMode.DRIVING_CAR
+                );
+                travelDistance = travelResponse.getDistance(); // Meters
+                travelDuration = travelResponse.getDuration(); // Seconds
+            } catch (Exception e) {
+                logger.warn("Failed to calculate travel distance/duration for request {}: {}", request.getRequest_id(), e.getMessage());
+            }
+        }
 
         return RequestResponseDTO.builder()
                 .id(request.getRequest_id())
@@ -110,7 +111,14 @@ public class RequestService {
                 .volunteer(volunteerDTO)
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
+                .travelDistance(travelDistance)
+                .travelDuration(travelDuration)
+                .address(request.getLocation() != null ? String.valueOf(request.getLocation()) : "Ubicación no especificada")
                 .build();
+    }
+
+    public RequestResponseDTO toDTO(Request request) {
+        return toDTO(request, null);
     }
 
     public List<RequestNearbyDTO> findNearbyRequests(Double latitude, Double longitude, Double radius) {
@@ -121,30 +129,38 @@ public class RequestService {
     }
 
     public RequestNearbyDTO toNearbyDTO(Request request, Double userLat, Double userLon) {
+        Double distance = null;
+        Double travelDuration = null;
+        try {
+            OpenRouteService.TravelTimeResponse travelResponse = openRouteService.getTravelTime(
+                    userLat, userLon,
+                    request.getLatitude(), request.getLongitude(),
+                    OpenRouteService.TransportMode.DRIVING_CAR
+            );
+            distance = travelResponse.getDistance();
+            travelDuration = travelResponse.getDuration();
+        } catch (Exception e) {
+            logger.warn("Failed to calculate travel distance/duration for nearby request {}: {}", request.getRequest_id(), e.getMessage());
+        }
+
         return RequestNearbyDTO.builder()
                 .id(request.getRequest_id())
                 .title(request.getTitle())
                 .category(request.getCategory())
                 .location(request.getLocation())
-                .distance(calculateDistance(request.getLatitude(), request.getLongitude(), userLat, userLon))
+                .distance(distance)
+                .travelDuration(travelDuration)
                 .build();
     }
 
-    private double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
-        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
-            return Double.MAX_VALUE;
+    private String getUsernameFromPrincipal(Object principal) {
+        if (principal instanceof CustomOAuth2User oauthUser) {
+            return oauthUser.getEmail();
+        } else if (principal instanceof UserDetails userDetails) {
+            return userDetails.getUsername();
+        } else if (principal instanceof String) {
+            return (String) principal;
         }
-
-        final int R = 6371;
-
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c * 1000;
+        throw new UsernameNotFoundException("Usuario no autenticado");
     }
-
 }

@@ -82,13 +82,14 @@ function initMap(latitude, longitude, requests = []) {
                         iconSize: [20, 20]
                     })
                 }).bindPopup(`
-                    <b>${request.title || 'Sin título'}</b><br>
-                    <small>Categoría: ${request.category || 'Sin categoría'}</small><br>
-                    <span>Distancia: ${request.distance ? (request.distance / 1000).toFixed(2) + ' km' : 'N/A'}</span>
-                    <div class="mt-2">
-                        <a href="/request/${request.id}" class="btn btn-sm btn-primary">Ver detalles</a>
-                    </div>
-                `);
+                      <b>${request.title || 'Sin título'}</b><br>
+                      <small>Categoría: ${request.category || 'Sin categoría'}</small><br>
+                      <span>Distancia: ${request.distance ? (request.distance / 1000).toFixed(2) + ' km' : 'N/A'}</span><br>
+                      <span>Tiempo de viaje: ${request.travelDuration ? (request.travelDuration / 60).toFixed(1) + ' minutos' : 'N/A'}</span>
+                      <div class="mt-2">
+                          <a href="/request/${request.request_id}" class="btn btn-sm btn-primary">Ver detalles</a>
+                      </div>
+                  `);
                 marker.addTo(map);
                 requestMarkers.push(marker);
             }

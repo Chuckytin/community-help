@@ -34,7 +34,8 @@
 
       <div th:unless="${requests.empty}" class="list-group">
         <a th:each="request : ${requests}"
-           th:href="@{'/request/' + ${request.id}}"
+           th:if="${request.id != null}"
+           th:href="@{/request/{id}(id=${request.id})}"
            class="list-group-item list-group-item-action">
           <div class="d-flex w-100 justify-content-between">
             <h5 class="mb-1" th:text="${request.title}">Título</h5>
@@ -46,6 +47,9 @@
             <span class="badge bg-info ms-2" th:text="${request.category}">Categoría</span>
           </small>
         </a>
+        <div th:each="request : ${requests}" th:if="${request.id == null}" class="list-group-item text-danger">
+          Solicitud con ID inválido: <span th:text="${request.title}">Título</span>
+        </div>
       </div>
     </div>
   </div>

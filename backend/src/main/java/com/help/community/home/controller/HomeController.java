@@ -79,6 +79,11 @@ public class HomeController {
                     .map(requestService::toDTO)
                     .collect(Collectors.toList()));
 
+            List<Request> volunteeringRequests = requestRepository.findByVolunteerOrderByCreatedAtDesc(user);
+            model.addAttribute("volunteeringRequests", volunteeringRequests.stream()
+                    .map(requestService::toDTO)
+                    .collect(Collectors.toList()));
+
             if (userProfile.getLatitude() != null && userProfile.getLongitude() != null) {
                 List<RequestNearbyDTO> nearbyRequests = requestService.findNearbyRequests(
                         userProfile.getLatitude(),

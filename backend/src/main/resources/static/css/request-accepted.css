@@ -1,0 +1,119 @@
+/* Estilos generales */
+.confirmation-card {
+    border-left: 5px solid #28a745;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.request-summary {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.request-title {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.request-description {
+    color: #495057;
+    margin-bottom: 1.5rem;
+}
+
+.request-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Tarjeta de contacto */
+.contact-card {
+    border-left: 3px solid #6f42c1;
+}
+
+.contact-person, .volunteer-info {
+    padding: 0.5rem;
+}
+
+.contact-name, .volunteer-name {
+    font-weight: 500;
+    margin: 0.5rem 0;
+}
+
+.contact-phone a {
+    color: #2c3e50;
+    text-decoration: none;
+}
+
+.contact-phone a:hover {
+    color: #6f42c1;
+    text-decoration: underline;
+}
+
+/* Mapa */
+#requestMap {
+    height: 300px;
+    border-radius: 0 0 5px 5px;
+}
+
+/* Timeline */
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-item {
+    padding-bottom: 1.5rem;
+    position: relative;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-point {
+    position: absolute;
+    left: -2rem;
+    top: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+}
+
+.timeline-item.active .timeline-point {
+    background-color: #28a745;
+    color: white;
+}
+
+.timeline-content {
+    padding-left: 1rem;
+}
+
+/* Botones de acción */
+.action-buttons .btn {
+    min-width: 150px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .request-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .action-buttons .d-flex {
+        flex-direction: column;
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}

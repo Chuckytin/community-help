@@ -37,6 +37,7 @@ public class RequestResponseDTO {
     private String transportMode;
     private String transportModeLabel;
     private Long timeToDeadline;
+    private String address;
 
     public String getFormattedDistance() {
         if (travelDistance == null) return "N/A";

@@ -39,4 +39,7 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
 
     List<Request> findByCreatorOrderByCreatedAtDesc(User creator);
 
+    @EntityGraph(attributePaths = {"creator", "volunteer"})
+    List<Request> findByVolunteerOrderByCreatedAtDesc(User volunteer);
+
 }
