@@ -3,28 +3,25 @@ package com.help.community.core.security.config;
 import com.help.community.core.security.oauth2.service.CustomOAuth2UserService;
 import com.help.community.core.security.oauth2.handler.OAuth2SuccessHandler;
 import com.help.community.core.security.web.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 import java.util.List;
 
-/**
- * Configuración principal de seguridad Spring Security.
- * Define filtros, políticas de sesión, codificadores de contraseña y autenticación.
- */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -33,15 +30,13 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oauth2SuccessHandler;
+    private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Configura la cadena de filtros de seguridad.
-     *
-     * - Desactiva CSRF
-     * - Permite acceso público a rutas específicas.
-     * - Habilita login OAuth2 con userService y successHandler personalizados.
-     * - Añade el filtro JWT antes del filtro de autenticación por usuario/contraseña.
-     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -60,16 +55,20 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
-                                "/login",
                                 "/home",
+                                "/login",
+                                "/api/auth/**",
                                 "/webjars/**",
                                 "/css/**",
-                                "/api/health",
-                                "/api/auth/**",
-                                "/oauth2/**",
-                                "/login/oauth2/code/google"
+                                "/js/**",
+                                "/static/**",
+                                "/resources/**",
+                                "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/login")
@@ -79,14 +78,10 @@ public class SecurityConfig {
                         )
                         .successHandler(oauth2SuccessHandler)
                 )
-                .formLogin(form -> form
-                        .loginPage("/login")
-                        .loginProcessingUrl("/api/auth/login")
-                        .defaultSuccessUrl("/home", true)
-                        .permitAll()
-                )
+                .formLogin(AbstractHttpConfigurer::disable)
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
+                        .deleteCookies("token")
                         .permitAll()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -94,12 +89,8 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Provee el AuthenticationManager para autenticaciones personalizadas.
-     */
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    private boolean isApiRequest(HttpServletRequest request) {
+        return request.getHeader("Accept") != null &&
+                request.getHeader("Accept").contains("application/json");
     }
-
 }

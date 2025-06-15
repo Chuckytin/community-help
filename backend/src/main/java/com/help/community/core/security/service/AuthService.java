@@ -9,7 +9,9 @@ import com.help.community.core.security.dto.LoginRequest;
 import com.help.community.core.security.dto.RegisterRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -65,11 +67,10 @@ public class AuthService {
         );
 
         var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow();
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
         return buildJwtResponse(user);
     }
-
 
     /**
      * Renueva un token JWT siempre que sea válido y no haya expirado completamente.
@@ -95,7 +96,7 @@ public class AuthService {
 
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
-                .id(user.getUser_id())
+                .id(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getMainRole())

@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.Collectors;
 
@@ -29,14 +30,18 @@ public class UserService implements UserDetailsService {
     /**
      * Convierte un usuario en un DTO de perfil, incluyendo conteo de solicitudes creadas.
      */
-    public UserProfileDTO toProfileDTO(User user) {
+    @Transactional(readOnly = true)
+    public UserProfileDTO getUserProfile(Long userId) {
+        User user = userRepository.findByIdWithCreatedRequests(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
         return UserProfileDTO.builder()
-                .id(user.getUser_id())
-                .name(user.getName())
+                .id(user.getUserId())
                 .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber() != null ? user.getPhoneNumber() : "No proporcionado")
+                .name(user.getName())
+                .phoneNumber(user.getPhoneNumber())
                 .roles(user.getRoles().stream()
-                        .map(Object::toString)
+                        .map(Enum::name)
                         .collect(Collectors.toSet()))
                 .createdRequestsCount(user.getCreatedRequests().size())
                 .build();
@@ -47,7 +52,7 @@ public class UserService implements UserDetailsService {
      */
     public UserDTO toDTO(User user) {
         return UserDTO.builder()
-                .id(user.getUser_id())
+                .id(user.getUserId())
                 .name(user.getName())
                 .role(user.getMainRole())
                 .phoneNumber(user.getPhoneNumber() != null ? user.getPhoneNumber() : "No proporcionado")
@@ -60,7 +65,7 @@ public class UserService implements UserDetailsService {
     public Page<UserDTO> getSafeUsers(Pageable pageable) {
         return userRepository.findAll(pageable)
                 .map(user -> UserDTO.builder()
-                        .id(user.getUser_id())
+                        .id(user.getUserId())
                         .name(user.getName())
                         .phoneNumber(user.getPhoneNumber() != null ? user.getPhoneNumber() : "No proporcionado")
                         .build());

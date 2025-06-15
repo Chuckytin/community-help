@@ -33,7 +33,8 @@ public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long user_id;
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -44,7 +45,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "phone_number") //TODO: Fuera de pruebas añadir unique = true
+    @Column(name = "phone_number")
     private String phoneNumber;
 
     @Column(columnDefinition = "geography(Point,4326)")
@@ -83,6 +84,15 @@ public class User implements UserDetails {
         this.email = email;
         this.name = name;
         this.password = password;
+    }
+
+    public User(Long userId, String email, String name, String phoneNumber,
+                Set<Role> roles, Long createdRequestsCount) {
+        this.userId = userId;
+        this.email = email;
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+        this.roles = roles;
     }
 
     public void setLocationFromLatLon(double latitude, double longitude) {

@@ -12,7 +12,7 @@
 
 	<groupId>com.help</groupId>
 	<artifactId>backend</artifactId>
-	<version>0.8.0</version>
+	<version>0.9.0</version>
 	<name>CommunityHelp</name>
 	<description>Demo project for Spring Boot</description>
 	<url/>
@@ -123,6 +123,18 @@
 			<groupId>org.webjars.npm</groupId>
 			<artifactId>leaflet</artifactId>
 			<version>1.9.4</version>
+		</dependency>
+		<!-- font-awesome -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>font-awesome</artifactId>
+			<version>6.7.2</version>
+		</dependency>
+		<!-- webjars-locator-core -->
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>webjars-locator-core</artifactId>
+			<version>0.59</version>
 		</dependency>
 		<!-- lombok - reduce código boilerplate -->
 		<dependency>

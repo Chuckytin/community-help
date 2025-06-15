@@ -18,4 +18,6 @@ public class UserProfileDTO {
     private String phoneNumber;
     private Set<String> roles;
     private int createdRequestsCount;
+    private Double latitude;
+    private Double longitude;
 }

@@ -7,11 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Inicio - Ayuda Comunitaria</title>
     <!-- Bootstrap CSS (WebJars) -->
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.0/css/bootstrap.min.css}"/>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
     <!-- Leaflet CSS (Mapas) -->
     <link rel="stylesheet" th:href="@{/webjars/leaflet/1.9.4/dist/leaflet.css}"/>
     <!-- Font Awesome (Iconos) -->
-    <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.4.0/css/all.min.css}"/>
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
     <style>
         body {
             background-color: #f8f9fa;
@@ -32,9 +32,9 @@
     <div class="container">
         <a class="navbar-brand" href="/home">Ayuda Comunitaria</a>
         <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Hola, <span sec:authentication="name">Usuario</span>!
-                </span>
+            <span class="navbar-text me-3">
+                Hola, <span th:text="${user.name}">Usuario</span>!
+            </span>
             <a class="btn btn-outline-light" href="#" th:href="@{/logout}">
                 <i class="fas fa-sign-out-alt"></i> Cerrar sesión
             </a>
@@ -49,11 +49,16 @@
         <div class="col-md-4 mb-4">
             <div class="card user-card">
                 <div class="card-body text-center">
-                    <img th:if="${#authentication.principal.attributes.picture}"
-                         th:src="${#authentication.principal.attributes.picture}"
+                    <!-- Imagen de perfil - funciona para ambos tipos de login -->
+                    <img th:if="${authAttributes?.picture}"
+                         th:src="${authAttributes?.picture}"
+                         th:unless="${authAttributes?.picture == null}"
+                         src="/images/default-user.png"
                          class="rounded-circle mb-3" width="100" alt="Foto perfil">
-                    <h5 sec:authentication="name">Nombre Usuario</h5>
-                    <p class="text-muted" sec:authentication="principal.email">email@ejemplo.com</p>
+
+                    <h5 th:text="${user.name}">Nombre Usuario</h5>
+                    <p class="text-muted" th:text="${user.email}">email@ejemplo.com</p>
+
                     <a th:href="@{/request/new}" class="btn btn-primary w-100 mb-2">
                         <i class="fas fa-plus"></i> Crear solicitud
                     </a>
@@ -72,6 +77,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div id="map"></div>
+                    <div th:if="${warning}" class="alert alert-warning m-3" th:text="${warning}"></div>
                 </div>
             </div>
         </div>
@@ -79,48 +85,47 @@
 </div>
 
 <!-- Scripts -->
-<script th:src="@{/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
 <script th:src="@{/webjars/leaflet/1.9.4/dist/leaflet.js}"></script>
 <script th:inline="javascript">
     /*<![CDATA[*/
-    // Verificación de autenticación
-    if (![[${#authentication.isAuthenticated()}]]) {
-        window.location.href = '/login';
-    }
+    const user = {
+        id: [[${user?.id}]],
+        name: [[${user?.name}]],
+        email: [[${user?.email}]],
+        phoneNumber: [[${user?.phoneNumber}]],
+        latitude: [[${user?.latitude}]],
+        longitude: [[${user?.longitude}]],
+        picture: [[${authAttributes?.picture}]] || '/images/default-user.png'
+    };
 
-    // Coordenadas por defecto (Madrid)
-    const defaultLat = 40.4168;
-    const defaultLon = -3.7038;
+    // Verificación segura de ubicación
+    if (user.latitude && user.longitude) {
+        // Inicializar mapa
+        const map = L.map('map').setView([user.latitude, user.longitude], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Obtener ubicación del usuario de forma segura
-    const user = [[${#authentication.principal}]];
-    const userLat = (user && user.latitude) ? user.latitude : defaultLat;
-    const userLon = (user && user.longitude) ? user.longitude : defaultLon;
-
-    // Inicializar mapa
-    const map = L.map('map').setView([userLat, userLon], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    // Marcador del usuario
-    if (user && user.latitude && user.longitude) {
-        L.marker([userLat, userLon])
-            .bindPopup("<b>Tu ubicación</b>")
+        // Marcador del usuario
+        L.marker([user.latitude, user.longitude])
+            .bindPopup(`<b>${user.name}</b><br>Tu ubicación`)
             .addTo(map);
-    }
 
-    // Añadir solicitudes cercanas con verificación de nulos
-    const solicitudes = [[${requests}]] || [];
-    solicitudes.forEach(sol => {
-        if (sol && sol.location && sol.location.x && sol.location.y) {
-            L.marker([sol.location.y, sol.location.x])
-                .bindPopup(`
-                    <b>${sol.title || 'Sin título'}</b><br>
-                    <small>${sol.category || 'Sin categoría'}</small><br>
-                    <span>Distancia: ${sol.distance ? (sol.distance / 1000).toFixed(2) + ' km' : 'N/A'}</span>
-                `)
-                .addTo(map);
-        }
-    });
+        // Marcadores de solicitudes
+        const requests = [[${requests}]] || [];
+        requests.forEach(request => {
+            if (request.x && request.y) {
+                L.marker([request.y, request.x])
+                    .bindPopup(`
+                        <b>${request.title || 'Sin título'}</b><br>
+                        <small>${request.category || 'Sin categoría'}</small><br>
+                        <span>Distancia: ${request.distance ? (request.distance / 1000).toFixed(2) + ' km' : 'N/A'}</span>
+                    `)
+                    .addTo(map);
+            }
+        });
+    } else {
+        console.warn("Ubicación del usuario no disponible para mostrar el mapa");
+    }
     /*]]>*/
 </script>
 </body>

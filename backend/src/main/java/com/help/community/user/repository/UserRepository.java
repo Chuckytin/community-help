@@ -14,6 +14,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = {"roles"})
     Optional<User> findById(Long id);
 
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.createdRequests LEFT JOIN FETCH u.roles WHERE u.userId = :userId")
+    Optional<User> findByIdWithCreatedRequests(@Param("userId") Long userId);
+
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.createdRequests LEFT JOIN FETCH u.roles WHERE u.email = :email")
+    Optional<User> findByEmailWithCreatedRequests(@Param("email") String email);
+
     /**
      * Busca un usuario por su email (si existe).
      */
@@ -23,4 +29,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.volunteeredRequests WHERE u.email = :email")
     Optional<User> findByEmailWithVolunteeredRequests(@Param("email") String email);
+
 }

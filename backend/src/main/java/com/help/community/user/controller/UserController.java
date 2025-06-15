@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
@@ -67,13 +68,14 @@ public class UserController {
      * @throws UsernameNotFoundException si el usuario no se encuentra.
      */
     @GetMapping("/profile")
+    @Transactional
     public ResponseEntity<UserProfileDTO> getUserProfile(
             @AuthenticationPrincipal UserDetails userDetails) {
 
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return ResponseEntity.ok(userService.toProfileDTO(user));
+        return ResponseEntity.ok(userService.getUserProfile(user.getUserId()));
     }
 
     /**

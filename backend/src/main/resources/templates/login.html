@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login - Ayuda Comunitaria</title>
   <!-- Bootstrap CSS (via WebJars) -->
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.0/css/bootstrap.min.css}"/>
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
+  <!-- Font Awesome para iconos -->
+  <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
   <style>
     .login-container {
         max-width: 400px;
@@ -15,6 +17,14 @@
         border-radius: 10px;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
+    .form-control:focus {
+        border-color: #3b7ddd;
+        box-shadow: 0 0 0 0.25rem rgba(59, 125, 221, 0.25);
+    }
+    .btn-primary {
+        background-color: #3b7ddd;
+        border-color: #3b7ddd;
+    }
   </style>
 </head>
 <body>
@@ -23,36 +33,121 @@
     <h2 class="text-center mb-4">Iniciar Sesión</h2>
 
     <!-- Botón de Google OAuth2 -->
-    <div class="d-grid gap-2">
+    <div class="d-grid gap-2 mb-3">
       <a th:href="@{/oauth2/authorization/google}" class="btn btn-danger">
-        <i class="bi bi-google"></i> Iniciar con Google
+        <i class="fab fa-google me-2"></i> Continuar con Google
       </a>
     </div>
 
     <!-- Separador -->
-    <hr class="my-4">
+    <div class="d-flex align-items-center mb-3">
+      <hr class="flex-grow-1">
+      <span class="mx-3 text-muted">o</span>
+      <hr class="flex-grow-1">
+    </div>
 
-    <!-- Formulario tradicional (si usas JWT local) -->
-    <form th:action="@{/api/auth/login}" method="post" th:unless="${#authentication.principal != 'anonymousUser'}">
+    <!-- Formulario tradicional -->
+    <form id="loginForm" novalidate>
       <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" class="form-control" id="email" name="email" required>
+        <label for="email" class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control" id="email" required>
+        <div class="invalid-feedback">Por favor ingresa un correo válido</div>
       </div>
       <div class="mb-3">
         <label for="password" class="form-label">Contraseña</label>
-        <input type="password" class="form-control" id="password" name="password" required>
+        <input type="password" class="form-control" id="password" required>
+        <div class="invalid-feedback">Por favor ingresa tu contraseña</div>
       </div>
-      <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-    </form>
+      <button type="submit" class="btn btn-primary w-100 mb-3" id="submitBtn">
+        <span id="submitText">Ingresar</span>
+        <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+      </button>
 
-    <!-- Mensajes de error -->
-    <div th:if="${param.error}" class="alert alert-danger mt-3">
-      Credenciales inválidas. Intenta nuevamente.
-    </div>
+      <!-- Mensaje de error -->
+      <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
+    </form>
   </div>
 </div>
 
 <!-- Bootstrap JS -->
-<script th:src="@{/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/webjars/bootstrap/5.3.6/js/bootstrap.bundle.min.js}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    const submitSpinner = document.getElementById('submitSpinner');
+    const errorDiv = document.getElementById('loginError');
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        errorDiv.classList.add('d-none');
+        emailInput.classList.remove('is-invalid');
+        passwordInput.classList.remove('is-invalid');
+
+        let isValid = true;
+        if (!emailInput.value || !emailInput.checkValidity()) {
+            emailInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        if (!passwordInput.value) {
+            passwordInput.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        if (!isValid) return;
+
+        submitText.classList.add('d-none');
+        submitSpinner.classList.remove('d-none');
+        submitBtn.disabled = true;
+
+        try {
+            console.log("Enviando datos de login...");
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: emailInput.value,
+                    password: passwordInput.value
+                }),
+                credentials: 'include' // Añade esto para incluir cookies
+            });
+
+            console.log("Respuesta recibida, status:", response.status);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error en la respuesta del servidor');
+            }
+
+            const data = await response.json();
+            console.log("Datos recibidos:", data);
+
+            if (data.accessToken) {
+                localStorage.setItem('authToken', data.accessToken);
+                console.log("Token guardado:", localStorage.getItem('authToken'));
+
+                // Redirigir directamente sin pasar el token por URL (más seguro)
+                window.location.href = '/home';
+            } else {
+                throw new Error('No se recibió token en la respuesta');
+            }
+        } catch (error) {
+            console.error("Error en el login:", error);
+            errorDiv.textContent = error.message || 'Error durante el inicio de sesión';
+            errorDiv.classList.remove('d-none');
+        } finally {
+            submitText.classList.remove('d-none');
+            submitSpinner.classList.add('d-none');
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
 </body>
 </html>
