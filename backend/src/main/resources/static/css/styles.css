@@ -59,12 +59,12 @@ body {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
     border-right: none;
-    margin-right: 8px; /* Añadido margen a la derecha */
+    margin-right: 8px;
 }
 
 #city {
-    border-radius: 0.25rem 0 0 0.25rem; /* Ajuste de bordes */
-    border-left: 1px solid #ced4da; /* Añadido borde izquierdo */
+    border-radius: 0.25rem 0 0 0.25rem;
+    border-left: 1px solid #ced4da;
 }
 
 #postalCode {

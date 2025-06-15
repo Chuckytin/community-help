@@ -10,7 +10,6 @@ import com.help.community.request.repository.RequestRepository;
 import com.help.community.user.repository.UserRepository;
 import com.help.community.integration.OpenRouteService;
 import com.help.community.request.service.RequestService;
-import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import lombok.Data;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +32,7 @@ import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -49,16 +49,18 @@ public class RequestController {
     private final RequestControllerUtils requestControllerUtils;
     private final ApplicationEventPublisher eventPublisher;
     private final GeocodingService geocodingService;
+    private OpenRouteService openRouteService;
 
     public RequestController(RequestRepository requestRepository, UserRepository userRepository,
                              RequestService requestService, RequestControllerUtils requestControllerUtils,
-                             ApplicationEventPublisher eventPublisher, GeocodingService geocodingService) {
+                             ApplicationEventPublisher eventPublisher, GeocodingService geocodingService, OpenRouteService openRouteService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.requestService = requestService;
         this.requestControllerUtils = requestControllerUtils;
         this.eventPublisher = eventPublisher;
         this.geocodingService = geocodingService;
+        this.openRouteService = openRouteService;
     }
 
     /**
@@ -322,46 +324,57 @@ public class RequestController {
 
     @PostMapping("/search-by-location")
     public ResponseEntity<List<RequestNearbyDTO>> searchRequestsByLocation(
-            @RequestBody LocationSearchDTO searchDTO,
-            @RequestParam(defaultValue = "10000") double radius) {
+            @RequestBody LocationSearchDTO searchDTO) {
 
         try {
-            double[] coords = geocodingService.getCoordinates(
-                    searchDTO.getCity(),
-                    searchDTO.getPostalCode()
-            );
+            // 1. Verificar si el municipio existe
+            if (!geocodingService.existsMunicipality(searchDTO.getCity())) {
+                return ResponseEntity.badRequest().build();
+            }
 
+            // 2. Obtener coordenadas de la ciudad
+            double[] coords = geocodingService.getCoordinates(searchDTO.getCity());
+
+            // 3. Buscar solicitudes cercanas
             List<Request> requests = requestRepository.findNearbyPendingRequests(
-                    coords[0], coords[1], radius
+                    coords[0], coords[1], 10000 // Radio de 10km
             );
 
+            // 4. Convertir a DTOs
             List<RequestNearbyDTO> dtos = requests.stream()
                     .map(request -> requestService.toNearbyDTO(request, coords[0], coords[1]))
-                    .sorted(Comparator.comparing(RequestNearbyDTO::getDistance))
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(dtos);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
-    private double[] getCoordinatesFromLocation(String city, String postalCode) {
-        // Implementación básica - en producción usarías un servicio de geocodificación
-        // Esto es un ejemplo - deberías implementar o inyectar un GeocodingService
-        if ("madrid".equalsIgnoreCase(city)) {
-            return new double[]{40.4168, -3.7038}; // Coordenadas de Madrid
+    @GetMapping("/city-coordinates")
+    public ResponseEntity<Map<String, Double>> getCityCoordinates(@RequestParam String city) {
+        try {
+            double[] coords = geocodingService.getCoordinates(city);
+            return ResponseEntity.ok(Map.of(
+                    "latitude", coords[0],
+                    "longitude", coords[1]
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
-        // ... otros casos
-        throw new IllegalArgumentException("Ubicación no encontrada");
     }
 
     @Data
     static class LocationSearchDTO {
         private String city;
-        private String postalCode;
+    }
+
+    private double[] getCoordinatesFromLocation(String city, String postalCode) {
+        if ("madrid".equalsIgnoreCase(city)) {
+            return new double[]{40.4168, -3.7038}; // Coordenadas de Madrid
+        }
+        throw new IllegalArgumentException("Ubicación no encontrada");
     }
 
 }

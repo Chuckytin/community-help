@@ -1,5 +1,6 @@
 package com.help.community.request.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.help.community.user.model.User;
 import jakarta.persistence.*;
 import jakarta.persistence.Table;
@@ -35,10 +36,10 @@ public class Request {
     private String description;
 
     @Column(nullable = false)
-    private String category; //TODO: Ej: Emergencia, Mantenimiento, Psicología...
+    private String category;
 
     @Column(nullable = false)
-    private String status = "PENDIENTE"; //TODO: "PENDIENTE", "ACEPTADA", "COMPLETADA"
+    private String status = "PENDIENTE";
 
     @Column(nullable = false, updatable = false)
     @CreationTimestamp
@@ -50,7 +51,7 @@ public class Request {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "volunteer_id")
-    private User volunteer; //TODO: opcional
+    private User volunteer;
 
     @Column(columnDefinition = "geography(Point,4326)")
     @JdbcTypeCode(SqlTypes.GEOGRAPHY)

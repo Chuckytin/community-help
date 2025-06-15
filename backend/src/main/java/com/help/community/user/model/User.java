@@ -1,5 +1,6 @@
 package com.help.community.user.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.help.community.request.model.Request;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
