@@ -18,7 +18,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
@@ -118,6 +120,32 @@ public class RequestViewController {
         model.addAttribute("request", requestService.toDTO(request, user));
         model.addAttribute("user", user);
         return "edit-request";
+    }
+
+    /**
+     * Elimina una solicitud si el usuario es el creador o un administrador.
+     * - Verifica que el usuario es el creador o admin.
+     */
+    @PostMapping("/{id}/delete")
+    public String deleteRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Object principal,
+            RedirectAttributes redirectAttributes) {
+        logger.info("Intento de eliminación de solicitud ID: {} por usuario", id);
+        try {
+            String username = getUsernameFromPrincipal(principal);
+            User user = userRepository.findByEmail(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+            requestService.deleteCompletedRequest(id, user.getUserId());
+            redirectAttributes.addFlashAttribute("success", "Solicitud eliminada exitosamente");
+        } catch (IllegalArgumentException e) {
+            logger.warn("Error al eliminar solicitud ID: {}: {}", id, e.getMessage());
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error inesperado al eliminar solicitud ID: {}: {}", id, e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Error al eliminar la solicitud");
+        }
+        return "redirect:/home";
     }
 
     private String getUsernameFromPrincipal(Object principal) {

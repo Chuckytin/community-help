@@ -11,9 +11,9 @@
   <div class="container">
     <a class="navbar-brand" href="/home">Ayuda Comunitaria</a>
     <div class="navbar-nav ms-auto">
-            <span class="navbar-text me-3">
-                Hola, <span th:text="${user.name}">Usuario</span>!
-            </span>
+      <span class="navbar-text me-3">
+        Hola, <span th:text="${user.name}">Usuario</span>!
+      </span>
       <a class="btn btn-outline-light" href="#" th:href="@{/logout}">
         <i class="fas fa-sign-out-alt"></i> Cerrar sesión
       </a>
@@ -22,6 +22,12 @@
 </nav>
 
 <div class="container py-4">
+  <div th:if="${success}" class="alert alert-success">
+    <span th:text="${success}"></span>
+  </div>
+  <div th:if="${error}" class="alert alert-danger">
+    <span th:text="${error}"></span>
+  </div>
   <div class="card">
     <div class="card-header bg-primary text-white">
       <h3><i class="fas fa-list"></i> Mis Solicitudes</h3>
@@ -33,20 +39,28 @@
       </div>
 
       <div th:unless="${requests.empty}" class="list-group">
-        <a th:each="request : ${requests}"
-           th:if="${request.id != null}"
-           th:href="@{/request/{id}(id=${request.id})}"
-           class="list-group-item list-group-item-action">
-          <div class="d-flex w-100 justify-content-between">
-            <h5 class="mb-1" th:text="${request.title}">Título</h5>
-            <small th:text="${#temporals.format(request.createdAt, 'dd/MM/yyyy')}">Fecha</small>
-          </div>
-          <p class="mb-1" th:text="${request.description}">Descripción</p>
-          <small>
-            <span class="badge" th:classappend="${request.statusClass}" th:text="${request.status}">Estado</span>
-            <span class="badge bg-info ms-2" th:text="${request.category}">Categoría</span>
-          </small>
-        </a>
+        <div th:each="request : ${requests}" th:if="${request.id != null}" class="list-group-item list-group-item-action">
+          <a th:href="@{/request/{id}(id=${request.id})}" class="text-decoration-none text-dark">
+            <div class="d-flex w-100 justify-content-between">
+              <h5 class="mb-1" th:text="${request.title}">Título</h5>
+              <small th:text="${#temporals.format(request.createdAt, 'dd/MM/yyyy')}">Fecha</small>
+            </div>
+            <p class="mb-1" th:text="${request.description}">Descripción</p>
+            <small>
+              <span class="badge" th:classappend="${request.statusClass}" th:text="${request.status}">Estado</span>
+              <span class="badge bg-info ms-2" th:text="${request.category}">Categoría</span>
+            </small>
+          </a>
+          <form th:if="${request.status == 'COMPLETADA'}"
+                th:action="@{/request/{id}/delete(id=${request.id})}"
+                method="post"
+                class="d-inline"
+                onsubmit="return confirm('¿Estás seguro de que quieres eliminar esta solicitud?');">
+            <button type="submit" class="btn btn-danger btn-sm ms-2">
+              <i class="fas fa-trash"></i> Borrar
+            </button>
+          </form>
+        </div>
         <div th:each="request : ${requests}" th:if="${request.id == null}" class="list-group-item text-danger">
           Solicitud con ID inválido: <span th:text="${request.title}">Título</span>
         </div>

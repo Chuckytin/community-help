@@ -163,4 +163,17 @@ public class RequestService {
         }
         throw new UsernameNotFoundException("Usuario no autenticado");
     }
+
+    public void deleteCompletedRequest(Long requestId, Long userId) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Solicitud no encontrada"));
+        if (!request.getCreator().getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Solo el creador puede eliminar la solicitud");
+        }
+        if (!"COMPLETADA".equals(request.getStatus())) {
+            throw new IllegalArgumentException("Solo las solicitudes completadas pueden ser eliminadas");
+        }
+        requestRepository.delete(request);
+        logger.info("Solicitud ID: {} eliminada exitosamente por usuario ID: {}", requestId, userId);
+    }
 }

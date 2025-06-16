@@ -441,39 +441,6 @@ public class RequestController {
         return "edit-request";
     }
 
-    /**
-     * Elimina una solicitud si el usuario es el creador o un administrador.
-     * - Verifica que el usuario es el creador o admin.
-     *
-     * @param id ID de la solicitud a eliminar.
-     * @param userDetails Usuario autenticado que realiza la acción.
-     * @return ResponseEntity con headers informativos y estado HTTP 200.
-     * @throws AccessDeniedException si el usuario no tiene permisos para eliminarla.
-     */
-    @DeleteMapping("/{requestId}")
-    public ResponseEntity<Void> deleteRequest(
-            @PathVariable("requestId") Long id,
-            @AuthenticationPrincipal UserDetails userDetails) throws AccessDeniedException {
-
-        Request request = requestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Request not found"));
-
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        if (!request.getCreator().equals(user) && !user.getRoles().contains("ROLE_ADMIN")) {
-            throw new AccessDeniedException("You don't have permission to delete this request");
-        }
-
-        requestRepository.delete(request);
-
-        return ResponseEntity.ok()
-                .header("message", "Request deleted successfully")
-                .header("requestId", id.toString())
-                .header("deletedAt", LocalDateTime.now().toString())
-                .build();
-    }
-
     @PostMapping("/search-by-location")
     public ResponseEntity<List<RequestNearbyDTO>> searchRequestsByLocation(@RequestBody LocationSearchDTO searchDTO) {
         try {
