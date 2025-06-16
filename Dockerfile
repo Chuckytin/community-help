@@ -19,4 +19,4 @@ RUN ./mvnw clean package -DskipTests
 EXPOSE 8080
 
 # Comando para ejecutar (ajustar el nombre del JAR según el pom.xml)
-CMD ["java", "-jar", "target/backend-0.8.0.jar"]
+CMD ["java", "-jar", "target/backend-1.0.0.jar"]
