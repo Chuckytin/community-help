@@ -5,15 +5,29 @@
   <title th:text="${request.title}">Detalle de Solicitud</title>
   <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
+  <link rel="stylesheet" th:href="@{/webjars/leaflet/1.9.4/dist/leaflet.css}"/>
+  html
+  <style>
+    #map {
+        height: 450px;  /* 3 veces más alto (de 150px a 450px) */
+        width: 100%;
+        border-radius: 5px;
+        margin: 10px 0; /* Espacio vertical extra */
+    }
+    .card.mapa-detalle .card-body {
+        padding: 0;
+        height: 500px;
+    }
+  </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
   <div class="container">
     <a class="navbar-brand" href="/home">Ayuda Comunitaria</a>
     <div class="navbar-nav ms-auto">
-            <span class="navbar-text me-3">
-                Hola, <span th:text="${user.name}">Usuario</span>!
-            </span>
+      <span class="navbar-text me-3">
+        Hola, <span th:text="${user.name}">Usuario</span>!
+      </span>
       <a class="btn btn-outline-light" href="#" th:href="@{/logout}">
         <i class="fas fa-sign-out-alt"></i> Cerrar sesión
       </a>
@@ -51,15 +65,9 @@
                 <li class="list-group-item">
                   <strong>Fecha límite:</strong>
                   <span th:text="${request.deadline != null} ?
-                                        ${#temporals.format(request.deadline, 'dd/MM/yyyy HH:mm')} : 'Sin fecha límite'">Fecha límite</span>
+                                       ${#temporals.format(request.deadline, 'dd/MM/yyyy HH:mm')} : 'Sin fecha límite'">Fecha límite</span>
                 </li>
               </ul>
-            </div>
-            <div class="col-md-6">
-              <h5>Ubicación</h5>
-              <div id="map" style="height: 200px; border-radius: 5px;"></div>
-              <input type="hidden" id="latitude" th:value="${request.latitude}">
-              <input type="hidden" id="longitude" th:value="${request.longitude}">
             </div>
           </div>
         </div>
@@ -69,7 +77,6 @@
               <h5>Acciones</h5>
             </div>
             <div class="card-body">
-              <!-- Display distance and travel duration -->
               <div class="mb-3">
                 <strong>Distancia:</strong>
                 <span th:text="${request.getFormattedDistance()}">N/A</span>
@@ -78,16 +85,11 @@
                 <strong>Tiempo de viaje:</strong>
                 <span th:text="${request.getFormattedDuration()}">N/A</span>
               </div>
-
-              <!-- Conditional buttons -->
-              <!-- Modificar solicitud button -->
               <div th:if="${isCreator}">
                 <a th:href="@{/request/edit/{id}(id=${request.id})}" class="btn btn-primary w-100 mb-2">
                   <i class="fas fa-edit"></i> Modificar solicitud
                 </a>
               </div>
-
-              <!-- Aceptar solicitud form -->
               <div th:if="${not isCreator and request.status == 'PENDIENTE'}">
                 <form th:action="@{/api/requests/{id}/assign-volunteer(id=${request.id})}" method="post">
                   <input type="hidden" name="_method" value="PATCH"/>
@@ -106,6 +108,16 @@
           </div>
         </div>
       </div>
+      <div class="card mt-4 mapa-detalle"> <!-- Añade clase específica -->
+        <div class="card-header">
+          <h5><i class="fas fa-map-marked-alt me-2"></i>Ubicación en el mapa</h5>
+        </div>
+        <div class="card-body">
+          <div id="map"></div>
+          <input type="hidden" id="latitude" th:value="${request.latitude}">
+          <input type="hidden" id="longitude" th:value="${request.longitude}">
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -114,15 +126,37 @@
 <script th:src="@{/webjars/leaflet/1.9.4/dist/leaflet.js}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-      const latitude = document.getElementById('latitude').value;
-      const longitude = document.getElementById('longitude').value;
+      const latitude = parseFloat(document.getElementById('latitude').value);
+      const longitude = parseFloat(document.getElementById('longitude').value);
 
-      if (latitude && longitude) {
+      if (!isNaN(latitude) && !isNaN(longitude)) {
           const map = L.map('map').setView([latitude, longitude], 15);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }).addTo(map);
+
+          // Marcador con popup
           L.marker([latitude, longitude]).addTo(map)
-              .bindPopup('Ubicación de la solicitud');
+              .bindPopup(`
+                  <b>${document.querySelector('.card-header h3').textContent}</b><br>
+                  ${document.querySelector('p').textContent.substring(0, 50)}...
+              `)
+              .openPopup();
+
+          // Círculo de radio (opcional)
+          L.circle([latitude, longitude], {
+              color: '#28a745',
+              fillColor: '#28a745',
+              fillOpacity: 0.2,
+              radius: 200 // 200 metros
+          }).addTo(map);
+
+          // Asegura el redimensionamiento
+          setTimeout(() => map.invalidateSize(), 100);
+      } else {
+          document.getElementById('map').innerHTML =
+              '<div class="alert alert-warning m-3">Ubicación no disponible</div>';
       }
   });
 </script>
