@@ -6,17 +6,17 @@
   <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.6/css/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.7.2/css/all.min.css}"/>
   <link rel="stylesheet" th:href="@{/webjars/leaflet/1.9.4/dist/leaflet.css}"/>
-  html
   <style>
-    #map {
-        height: 450px;  /* 3 veces más alto (de 150px a 450px) */
-        width: 100%;
-        border-radius: 5px;
-        margin: 10px 0; /* Espacio vertical extra */
+    #map { height: 250px; width: 100%; border-radius: 5px; }
+    .leaflet-popup-content-wrapper .btn-primary {
+      color: #fff !important;
+      background-color: #007bff;
+      border-color: #007bff;
     }
-    .card.mapa-detalle .card-body {
-        padding: 0;
-        height: 500px;
+    .leaflet-popup-content-wrapper .btn-primary:hover {
+      color: #e0e0e0 !important;
+      background-color: #0056b3;
+      border-color: #0056b3;
     }
   </style>
 </head>

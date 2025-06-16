@@ -26,13 +26,13 @@ body {
 }
 
 /* Estilos para los popups del mapa */
-.leaflet-popup-content {
-    min-width: 200px;
-}
-
 .leaflet-popup-content a.btn {
     width: 100%;
     margin-top: 0.5rem;
+    color: #fff !important;
+}
+.leaflet-popup-content a.btn:hover {
+    color: #d0d0d0 !important;
 }
 
 /* Alertas del mapa */
