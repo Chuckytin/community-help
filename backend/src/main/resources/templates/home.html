@@ -39,9 +39,8 @@
             <div class="card user-card">
                 <div class="card-body text-center">
                     <!-- Imagen de perfil -->
-                    <img th:if="${authAttributes?.picture}"
-                         th:src="${authAttributes?.picture}"
-                         th:unless="${authAttributes?.picture == null}"
+                    <img th:if="${authAttributes != null and authAttributes.containsKey('picture') and authAttributes.picture != null}"
+                         th:src="${authAttributes.picture}"
                          src="/images/default-user.png"
                          class="rounded-circle mb-3" width="100" alt="Foto perfil">
 

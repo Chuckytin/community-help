@@ -9,10 +9,10 @@ import com.help.community.user.repository.UserRepository;
 import io.jsonwebtoken.JwtException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -56,35 +56,45 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
-            System.out.println("Intento de login para: " + request.getEmail());
-
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                System.out.println("Contraseña incorrecta para: " + request.getEmail());
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Credenciales inválidas"));
+                        .body(Map.of(
+                                "error", "Credenciales inválidas",
+                                "message", "La contraseña proporcionada no coincide"
+                        ));
             }
 
             JwtResponse response = authService.login(request);
-            System.out.println("Login exitoso para: " + request.getEmail());
 
-            // Devuelve también el token como cookie
             ResponseCookie cookie = ResponseCookie.from("token", response.getAccessToken())
                     .httpOnly(true)
-                    .secure(false) // Cambiar a true en producción con HTTPS
+                    .secure(false)
                     .path("/")
-                    .maxAge(7 * 24 * 60 * 60) // 7 días
+                    .maxAge(7 * 24 * 60 * 60)
                     .build();
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body(response);
-        } catch (Exception e) {
-            System.out.println("Error en login: " + e.getMessage());
+                    .body(Map.of(
+                            "token", response.getAccessToken(),
+                            "redirectUrl", "/home"
+                    ));
+
+        } catch (UsernameNotFoundException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Error de autenticación: " + e.getMessage()));
+                    .body(Map.of(
+                            "error", "Usuario no encontrado",
+                            "message", "No existe una cuenta con este email"
+                    ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "error", "Error de autenticación",
+                            "message", e.getMessage()
+                    ));
         }
     }
 

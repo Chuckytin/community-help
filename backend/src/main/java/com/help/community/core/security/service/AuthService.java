@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,12 +37,12 @@ public class AuthService {
      * @return JWT con datos del usuario
      */
     public JwtResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
             throw new EmailAlreadyExistsException(request.getEmail());
         }
 
         var user = User.builder()
-                .email(request.getEmail())
+                .email(request.getEmail().trim().toLowerCase())
                 .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
@@ -59,17 +60,27 @@ public class AuthService {
      * @return Token JWT
      */
     public JwtResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        try {
+            // Autenticar al usuario
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    );
+            authenticationManager.authenticate(authentication);
 
-        var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+            // Obtener el usuario
+            var user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + request.getEmail()));
 
-        return buildJwtResponse(user);
+            // Establecer la autenticación en el contexto de seguridad
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            return buildJwtResponse(user);
+
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException("Credenciales inválidas");
+        }
     }
 
     /**

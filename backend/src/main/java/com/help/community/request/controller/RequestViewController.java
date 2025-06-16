@@ -91,8 +91,8 @@ public class RequestViewController {
         Request request = requestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Solicitud no encontrada"));
         model.addAttribute("request", requestService.toDTO(request));
-        model.addAttribute("isAccepted", true); // Bandera para la vista
-        return "request-accepted"; // O puedes usar "request-details" con lógica condicional
+        model.addAttribute("isAccepted", true);
+        return "request-accepted";
     }
 
     @GetMapping("/requests")

@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/home",
                                 "/login",
                                 "/api/auth/**",
+                                "/oauth2/**",
                                 "/webjars/**",
                                 "/css/**",
                                 "/js/**",

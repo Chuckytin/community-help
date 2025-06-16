@@ -25,8 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const errorElement = document.getElementById('loginError');
         errorElement.classList.add('d-none');
-        
-        // Mostrar spinner y deshabilitar botón
+
         const spinner = loginBtn.querySelector('.spinner-border');
         const btnText = loginBtn.querySelector('.btn-text');
         spinner.classList.remove('d-none');
@@ -45,19 +44,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error en la respuesta del servidor');
+                throw new Error(data.message || data.error || 'Error en el login');
             }
 
-            const data = await response.json();
-            if (data.accessToken) {
-                localStorage.setItem('authToken', data.accessToken);
-                window.location.href = '/home';
-            }
+            console.log('Respuesta del login:', data);
+            window.location.href = data.redirectUrl || '/home';
+
         } catch (error) {
-            console.error("Error en el login:", error);
-            errorElement.textContent = error.message || 'Error durante el inicio de sesión';
+            errorElement.textContent = error.message;
             errorElement.classList.remove('d-none');
         } finally {
             spinner.classList.add('d-none');
